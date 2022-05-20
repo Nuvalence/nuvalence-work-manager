@@ -1,0 +1,727 @@
+openapi: "3.0.3"
+info:
+  version: 1.0.0
+  title: Work Manager
+  description: >-
+    Customizable work item manager that leverages Camunda workflows (BPMN and DMN), Form.io and customizable data types
+    to model online transaction processing.
+paths:
+  /actions/{processInstanceId}:
+    get:
+      summary: Get a list of all available actions for the task related to the given processInstanceId
+      operationId: getActions
+      tags: [ 'Action' ]
+      parameters:
+        - in: path
+          name: processInstanceId
+          description: processInstanceId to find the related task and to return available actions for it
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The requested list of available actions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '404':
+          description: There are no available actions to the task related to the given processInstanceId.
+  /admin/entity/schema:
+    post:
+      summary: Create or Update a schema definition.
+      operationId: postSchema
+      tags: [ 'Schema' ]
+      requestBody:
+        description: Schema definition.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SchemaModel'
+      responses:
+        204:
+          description: The Schema was created.
+    get:
+      summary: Get list of defined schemas with name matching a search string. Omitting search parameter will return all schemas.
+      operationId: getSchemas
+      tags: [ 'Schema' ]
+      parameters:
+        - in: query
+          name: search
+          description: Full or partial schema name to filter returned schemas.
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Collection of schemas matching search criteria.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SchemaModel'
+  /admin/entity/schema/{name}:
+    get:
+      summary: Get a single Schema whose name matches the path exactly.
+      operationId: getSchema
+      tags: [ 'Schema' ]
+      parameters:
+        - in: path
+          name: name
+          description: Name of schema to retrieve
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The requested Schema.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchemaModel'
+        '404':
+          description: A schema with the given name does not exist.
+  /admin/formconfig:
+    post:
+      summary: Create or Update a form config definition.
+      operationId: postFormConfig
+      tags: [ 'FormConfig' ]
+      requestBody:
+        description: Form Config definition.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FormConfigDefinitionModel'
+      responses:
+        200:
+          description: The posted form config post-save. This will include assigned IDs for newly created form configs.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FormConfigDefinitionModel'
+    get:
+      summary: Get list of defined form configs with name matching a search string. Omitting search parameter will return all form configs.
+      operationId: getFormConfigs
+      tags: [ 'FormConfig' ]
+      parameters:
+        - in: query
+          name: search
+          description: Full or partial form config name to filter returned form config.
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Collection of form configs matching search criteria.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FormConfigDefinitionModel'
+  /admin/formconfigID/{id}:
+    get:
+      summary: Get a single form config whose name matches the path exactly.
+      operationId: getFormConfigById
+      tags: [ 'FormConfig' ]
+      parameters:
+        - in: path
+          name: id
+          description: ID of form config to retrieve
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The requested form config.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FormConfigDefinitionModel'
+        '404':
+          description: A form config with the given id does not exist.
+  /admin/formconfig/{name}:
+    get:
+      summary: Get a single form config whose name matches the path exactly.
+      operationId: getFormConfigByName
+      tags: [ 'FormConfig' ]
+      parameters:
+        - in: path
+          name: name
+          description: Name of form config to retrieve
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The requested form config.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FormConfigDefinitionModel'
+        '404':
+          description: A form config with the given name does not exist.
+  /admin/transaction:
+    post:
+      summary: Create or Update a transaction definition.
+      operationId: postTransactionDefinition
+      tags: [ 'Transaction' ]
+      requestBody:
+        description: Transaction Definition.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionDefinitionModel'
+      responses:
+        200:
+          description: The posted transaction definition post-save. This will include assigned IDs for newly created transaction definitions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionDefinitionModel'
+    get:
+      summary: Get list of transaction definitions with name matching a search string. Omitting search parameter will return all transaction definitions.
+      operationId: getTransactionDefinitions
+      tags: [ 'Transaction' ]
+      parameters:
+        - in: query
+          name: name
+          description: Full or partial name to filter returned transaction definitions.
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Collection of transaction definitions matching search criteria.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransactionDefinitionModel'
+  /admin/transaction/category:
+    get:
+      summary: Get list of transaction definitions with name matching a search string
+      operationId: getTransactionDefinitionsByCategory
+      tags: [ 'Transaction' ]
+      parameters:
+        - in: query
+          name: category
+          description: Full or partial name to filter returned transaction definitions by category.
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Collection of transaction definitions matching category criteria.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransactionDefinitionModel'
+  /admin/transaction/{id}:
+    get:
+      summary: Get a single transaction definition by ID.
+      operationId: getTransactionDefinition
+      tags: [ 'Transaction' ]
+      parameters:
+        - in: path
+          name: id
+          description: ID of transaction definition to retrieve
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The requested transaction definition.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionDefinitionModel'
+        '404':
+          description: A schema with the given name does not exist.
+  /entity:
+    post:
+      summary: Create or Update an entity.
+      operationId: postEntity
+      tags: [ 'Entity' ]
+      requestBody:
+        description: Entity.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntityModel'
+      responses:
+        200:
+          description: The posted entity post-save. This will include assigned IDs for newly created entities.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityModel'
+        424:
+          description: The schema referecned in the entity body does not exist.
+    get:
+      summary: Get a list of entities for a given schema.
+      operationId: getEntitiesBySchema
+      tags: [ 'Entity' ]
+      parameters:
+        - in: query
+          name: schema
+          description: Schema name to find entities for.
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Collection of entities matching the requested schema.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EntityModel'
+  /entity/{id}:
+    get:
+      summary: Get a single entity by ID.
+      operationId: getEntity
+      tags: [ 'Entity' ]
+      parameters:
+        - in: path
+          name: id
+          description: ID of entity to retrieve
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The requested entity.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityModel'
+        '404':
+          description: An entity with the given ID does not exist.
+  /tasks/{processInstanceId}:
+    get:
+      summary: Get list of active tasks by process instance ID
+      operationId: getActiveTasks
+      tags: [ 'Task' ]
+      parameters:
+        - in: path
+          name: processInstanceId
+          description: Process instance ID to retrieve active tasks for
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The requested tasks.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskModel'
+        '404':
+          description: There are no active tasks with the given process instance ID.
+  /tasks/completed:
+    get:
+      summary: Get list of completed tasks by process instance ID
+      operationId: getCompletedTasks
+      tags: [ 'Task' ]
+      parameters:
+        - in: path
+          name: processInstanceId
+          description: Process instance ID to retrieve completed tasks for
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The requested tasks.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskModel'
+        '404':
+          description: There are no completed tasks with the given process instance ID.
+  /transaction:
+    post:
+      summary: Create a new transaction instance.
+      operationId: postTransaction
+      tags: [ 'Transaction' ]
+      requestBody:
+        description: Transaction Creation Request.
+
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionCreationRequest'
+      responses:
+        200:
+          description: The posted transaction  post-save. This will include assigned IDs for newly created transaction.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionModel'
+    get:
+      summary: Get list of transactions for a given transaction definition.
+      operationId: getTransactions
+      tags: [ 'Transaction' ]
+      parameters:
+        - in: query
+          name: transactionDefinitionKey
+          description: Key of the transaction definition to fetch transactions for.
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Collection of transaction matching definition.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransactionModel'
+  /transaction/category:
+    get:
+      summary: Get list of transactions by transaction category.
+      operationId: getTransactionsByCategory
+      tags: [ 'Transaction' ]
+      parameters:
+        - in: query
+          name: category
+          description: category key to filter transactions by.
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Collection of transaction matching definition.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransactionModel'
+  /transaction/{id}:
+    get:
+      summary: Get a single transaction by ID.
+      operationId: getTransaction
+      tags: [ 'Transaction' ]
+      parameters:
+        - in: path
+          name: id
+          description: ID of transaction to retrieve
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The requested transaction.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionModel'
+        '404':
+          description: A transaction with the given ID does not exist.
+    post:
+      summary: Update an existing transaction.
+      operationId: updateTransaction
+      tags: [ 'Transaction' ]
+      parameters:
+        - in: path
+          name: id
+          description: ID of transaction to update
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: taskId
+          description: (Optional) ID of workflow task to post data to as part of this update
+          required: false
+          schema:
+            type: string
+      requestBody:
+        description: Transaction Data to update.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionUpdateRequest'
+      responses:
+        '200':
+          description: The updated transaction.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionModel'
+  /transaction/user/all:
+    get:
+      summary: Get all transactions for a given user.
+      operationId: getTransactionsByUser
+      tags: [ 'Transaction' ]
+      responses:
+        '200':
+          description: The requested transactions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransactionModel'
+components:
+  schemas:
+    EntityModel:
+      type: object
+      required:
+        - schema
+        - data
+      properties:
+        id:
+          type: string
+          format: uuid
+        schema:
+          type: string
+        data:
+          type: object
+          additionalProperties: true
+    SchemaModel:
+      type: object
+      required:
+        - name
+        - attributes
+      properties:
+        name:
+          type: string
+        attributes:
+          type: array
+          items:
+            $ref: '#/definitions/AttributeDefinitionModel'
+    AttributeDefinitionModel:
+      type: object
+      required:
+        - name
+        - type
+        - constraints
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        contentType:
+          type: string
+        entitySchema:
+          type: string
+        constraints:
+          type: array
+          items:
+            $ref: '#/definitions/ValidationConstraintModel'
+    ValidationConstraintModel:
+      type: object
+      required:
+        - constraintType
+      properties:
+        constraintType:
+          type: string
+      discriminator:
+        propertyName: "constraintType"
+        mapping:
+          NotNull: '#/definitions/NotNullConstraintModel'
+          NotBlank: '#/definitions/NotBlankConstraintModel'
+          Length: '#/definitions/LengthConstraintModel'
+          NotZero: '#/definitions/NotZeroConstraintModel'
+          Monetary: '#/definitions/MonetaryConstraintModel'
+    NotNullConstraintModel:
+      allOf:
+        - $ref: '#/definitions/ValidationConstraintModel'
+    NotBlankConstraintModel:
+      allOf:
+        - $ref: '#/definitions/ValidationConstraintModel'
+    NotZeroConstraintModel:
+      allOf:
+        - $ref: '#/definitions/ValidationConstraintModel'
+    MonetaryConstraintModel:
+      allOf:
+        - $ref: '#/definitions/ValidationConstraintModel'
+    LengthConstraintModel:
+      allOf:
+        - $ref: '#/definitions/ValidationConstraintModel'
+      type: object
+      properties:
+        min:
+          type: integer
+        max:
+          type: integer
+    TransactionDefinitionModel:
+      type: object
+      required:
+        - name
+        - key
+        - processDefinitionKey
+        - entitySchema
+        - defaultStatus
+        - taskFormMappings
+        - category
+      properties:
+        id:
+          type: string
+          format: uuid
+        key:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        processDefinitionKey:
+          type: string
+        entitySchema:
+          type: string
+        defaultStatus:
+          type: string
+        taskFormMappings:
+          type: array
+          items:
+            $ref: '#/definitions/TaskFormMappingModel'
+        namedFormMappings:
+          type: array
+          items:
+            $ref: '#/definitions/NamedFormMappingModel'
+    TaskFormMappingModel:
+      type: object
+      required:
+        - taskDefinitionId
+        - formId
+      properties:
+        id:
+          type: string
+          format: uuid
+        taskDefinitionId:
+          type: string
+        formId:
+          type: string
+          format: uuid
+        role:
+          type: string
+    NamedFormMappingModel:
+      type: object
+      required:
+        - formConfigName
+        - formId
+      properties:
+        id:
+          type: string
+          format: uuid
+        formConfigName:
+          type: string
+        formId:
+          type: string
+          format: uuid
+        role:
+          type: string
+    TaskModel:
+      type: object
+      required:
+        - taskDefinitionId
+        - taskName
+      properties:
+        taskDefinitionId:
+          type: string
+        taskName:
+          type: string
+    FormConfigDefinitionModel:
+      type: object
+      required:
+        - name
+        - schema
+        - formConfigJson
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        schema:
+          type: string
+        formConfigJson:
+          type: string
+    TransactionCreationRequest:
+      type: object
+      required:
+        - transactionDefinitionKey
+      properties:
+        transactionDefinitionKey:
+          type: string
+    TransactionUpdateRequest:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: true
+        status:
+          type: string
+        priority:
+          type: string
+    TransactionModel:
+      type: object
+      required:
+        - data
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        priority:
+          type: string
+        transactionDefinitionId:
+          type: string
+          format: uuid
+        transactionDefinitionKey:
+          type: string
+        processInstanceId:
+          type: string
+        createdBy:
+          type: string
+        createdTimestamp:
+          type: string
+          format: date-time
+        lastUpdatedTimestamp:
+          type: string
+          format: date-time
+        data:
+          type: object
+          additionalProperties: true
+    Error:
+      type: "object"
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string

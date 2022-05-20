@@ -1,0 +1,62 @@
+version: '3.9'
+
+services:
+  workmanagerpostgres:
+    image: 'postgres:14-alpine'
+    ports:
+      - "5432:5432"
+    container_name: workmanagerpostgres
+    environment:
+      - POSTGRES_DB=workmanagerpostgres
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=root
+      - PGPORT=5432
+      - PGDATABASE=workmanagerpostgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - work-manager
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  pgadmin:
+    container_name: workmanager_pgadmin
+    image: dpage/pgadmin4
+    restart: on-failure
+    ports:
+      - "5050:80"
+    depends_on:
+      - workmanagerpostgres
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: root
+    networks:
+      - work-manager
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+
+  workmanager:
+    container_name: workmanager
+    image: 'docker-spring-boot-postgres:latest'
+    build:
+      context: .
+      dockerfile: workmanager.Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      workmanagerpostgres:
+        condition: service_healthy
+    networks:
+      - work-manager
+
+networks:
+  work-manager: {}
+
+volumes:
+  db-data:
+    external: false
+  pgadmin-data:
+    external: false

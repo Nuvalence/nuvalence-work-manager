@@ -1,0 +1,32 @@
+package io.nuvalence.workmanager.service.domain.dynamicschema.validation;
+
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+
+import java.math.BigDecimal;
+import java.util.Collection;
+import java.util.Collections;
+
+/**
+ * Validates that the value under inspection is a dollar amount.
+ */
+@EqualsAndHashCode(callSuper = true)
+public final class MonetaryConstraint extends Constraint<BigDecimal> {
+
+    @Getter
+    private final Class<BigDecimal> type = BigDecimal.class;
+
+    @Getter
+    private final String messageTemplate = "{0} must be a dollar amount";
+
+    @Getter
+    private final Collection<Object> args = Collections.emptyList();
+
+    @Override
+    public boolean isValid(BigDecimal value) {
+        final BigDecimal valueToTest = (value == null) ? value.ZERO : value;
+
+        return (valueToTest.scale() >= 0) && (valueToTest.scale() <= 2);
+
+    }
+}

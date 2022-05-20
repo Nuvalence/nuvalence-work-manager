@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd"
+        objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
+    <changeSet id="add-dynamic_schema-table" author="jstgelais">
+        <createTable tableName="dynamic_schema">
+            <column name="name" type="VARCHAR(1024)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_dynamic_schema"/>
+            </column>
+            <column name="schema_json" type="JSONB">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="add-dynamic_entity-table" author="jstgelais">
+        <createTable tableName="dynamic_entity">
+            <column name="id" type="VARCHAR(36)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_dynamic_entity"/>
+            </column>
+            <column name="schema" type="VARCHAR(1024)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="entity_json" type="JSONB">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseColumnNames="schema" baseTableName="dynamic_entity"
+                                 constraintName="fk_entity_schema"
+                                 referencedColumnNames="name" referencedTableName="dynamic_schema" />
+    </changeSet>
+    <changeSet id="add-transaction_definition-table" author="jstgelais">
+        <createTable tableName="transaction_definition">
+            <column name="id" type="VARCHAR(36)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_transaction_definition"/>
+            </column>
+            <column name="transaction_definition_key" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(1024)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="process_definition_key" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="entity_schema" type="VARCHAR(1024)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="default_status" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="category" type="VARCHAR(1024)">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="add-transaction_task_form_mapping-table" author="jstgelais">
+        <createTable tableName="transaction_task_form_mapping">
+            <column name="id" type="VARCHAR(36)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_transaction_task_form_mapping"/>
+            </column>
+            <column name="transaction_definition_id" type="VARCHAR(36)">
+                <constraints nullable="false" />
+            </column>
+            <column name="task_definition_id" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="form_id" type="VARCHAR(36)">
+                <constraints nullable="false" />
+            </column>
+            <column name="role" type="VARCHAR(1024)">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseColumnNames="transaction_definition_id" baseTableName="transaction_task_form_mapping"
+                                 constraintName="fk_transaction_task_form_mapping_transaction_definition"
+                                 referencedColumnNames="id" referencedTableName="transaction_definition" />
+    </changeSet>
+    <changeSet id="add-transaction_named_form_mapping_table" author="gcusano">
+        <createTable tableName="transaction_named_form_mapping">
+            <column name="id" type="VARCHAR(36)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_transaction_named_form_mapping"/>
+            </column>
+            <column name="transaction_definition_id" type="VARCHAR(36)">
+                <constraints nullable="false" />
+            </column>
+            <column name="form_config_name" type="VARCHAR(1024)">
+                <constraints nullable="false" />
+            </column>
+            <column name="form_id" type="VARCHAR(36)">
+                <constraints nullable="false" />
+            </column>
+            <column name="role" type="VARCHAR(1024)">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseColumnNames="transaction_definition_id" baseTableName="transaction_named_form_mapping"
+                                 constraintName="fk_transaction_named_form_mapping_transaction_definition"
+                                 referencedColumnNames="id" referencedTableName="transaction_definition" />
+    </changeSet>
+    <changeSet id="add-form_config_definition-table" author="gcusano">
+        <createTable tableName="form_config_definition">
+            <column name="id" type="VARCHAR(36)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_form_config_definition"/>
+            </column>
+            <column name="name" type="VARCHAR(1024)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="schema" type="VARCHAR(1024)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="form_config_json" type="JSONB">
+                <constraints nullable="false"/>
+            </column>
+            <column name="renderer_options_json" type="JSONB">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseColumnNames="schema" baseTableName="form_config_definition"
+                                 constraintName="fk_form_config_schema"
+                                 referencedColumnNames="name" referencedTableName="dynamic_schema" />
+    </changeSet>
+    <changeSet id="add-transaction-table" author="jstgelais">
+        <createTable tableName="transaction">
+            <column name="id" type="VARCHAR(36)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_transaction"/>
+            </column>
+            <column name="transaction_definition_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="transaction_definition_key" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="process_instance_id" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(255)" defaultValue="new">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="priority" type="VARCHAR(255)" defaultValue="low">
+            </column>
+            <column name="created_timestamp" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated_timestamp" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="entity_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseColumnNames="transaction_definition_id" baseTableName="transaction"
+                                 constraintName="fk_transaction_transaction_definition"
+                                 referencedColumnNames="id" referencedTableName="transaction_definition" />
+        <addForeignKeyConstraint baseColumnNames="entity_id" baseTableName="transaction"
+                                 constraintName="fk_transaction_entity"
+                                 referencedColumnNames="id" referencedTableName="dynamic_entity" />
+    </changeSet>
+</databaseChangeLog>

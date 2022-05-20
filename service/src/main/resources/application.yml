@@ -1,0 +1,29 @@
+spring:
+  liquibase:
+    enabled: true
+    change-log: classpath:/db/changelog/changelog-master.xml
+  jackson:
+    serialization:
+      write-dates-with-zone-id: true
+      write-dates-as-timestamps: false
+    deserialization:
+      adjust_dates_to_context_time-zone: false
+  jpa:
+    hibernate:
+      ddl-auto: none
+
+
+camunda:
+  bpm:
+    enabled: true
+    default-serialization-format: application/json
+    history-level: auto
+    history-level-default: audit
+    job-execution:
+      enabled: true
+      deployment-aware: true
+      core-pool-size: 3
+      max-pool-size: 20
+    metrics:
+      enabled: false
+      db-reporter-activate: false

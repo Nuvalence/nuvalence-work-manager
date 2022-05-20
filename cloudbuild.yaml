@@ -1,0 +1,30 @@
+steps:
+  - name: 'openjdk:17'
+    id: build and push image
+    entrypoint: bash
+    args:
+      - ./gradlew
+      - build
+      - jib
+      - '--image'
+      - '$_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA'
+  - name: 'hashicorp/terraform:1.0.0'
+    id: Terraform Apply
+    entrypoint: sh
+    args:
+      - '-c'
+      - >
+        cd infrastructure
+
+        set -e
+
+        terraform init
+        terraform apply -auto-approve -var gcp_project_id=$PROJECT_ID -var gcp_region=$_DEPLOY_REGION -var service_name=$_SERVICE_NAME -var image='$_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA'
+images:
+  - '$_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA'
+options:
+  substitutionOption: ALLOW_LOOSE
+substitutions:
+  _DEPLOY_REGION: us-east4
+  _GCR_HOSTNAME: us.gcr.io
+  _SERVICE_NAME: work-manager

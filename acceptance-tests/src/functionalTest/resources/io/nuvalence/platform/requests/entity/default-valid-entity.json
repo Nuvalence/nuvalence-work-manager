@@ -1,0 +1,6 @@
+{
+  "schema": "test-valid",
+  "data": {
+    "input": "value"
+  }
+}

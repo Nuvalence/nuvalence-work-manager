@@ -1,0 +1,78 @@
+plugins {
+	id 'org.springframework.boot' version '2.5.7'
+	id 'io.spring.dependency-management' version '1.0.0.RELEASE'
+	id 'java'
+	id 'com.google.cloud.tools.jib'
+	id 'checkstyle'
+	id 'jacoco'
+	id 'com.avast.gradle.docker-compose' version '0.14.0'
+}
+
+sourceCompatibility = JavaVersion.VERSION_11
+targetCompatibility = JavaVersion.VERSION_11
+
+apply from: "${rootDir}/gradle/openapi-tools/server.gradle"
+apply from: "${rootDir}/gradle/code-quality.gradle"
+
+def mapstructVersion = '1.4.2.Final'
+
+configurations {
+	compileOnly.extendsFrom annotationProcessor
+}
+
+dependencies {
+	annotationProcessor 'org.projectlombok:lombok'
+	annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
+
+	compileOnly 'com.google.code.findbugs:annotations:3.0.1'
+	compileOnly 'org.springframework.boot:spring-boot-devtools'
+	compileOnly 'org.projectlombok:lombok'
+
+	implementation platform('org.camunda.bpm:camunda-bom:7.16.0')
+
+	implementation "org.mapstruct:mapstruct:${mapstructVersion}"
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.camunda.bpm.springboot:camunda-bpm-spring-boot-starter-rest'
+	implementation 'org.camunda.bpm.springboot:camunda-bpm-spring-boot-starter-webapp'
+	implementation 'org.camunda.bpm:camunda-bpm-junit5:7.17.0'
+	implementation 'commons-beanutils:commons-beanutils:1.9.4'
+	implementation 'org.liquibase:liquibase-core'
+	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+	implementation 'com.vladmihalcea:hibernate-types-52:2.16.1'
+
+	runtimeOnly 'org.postgresql:postgresql'
+	runtimeOnly 'com.google.cloud.sql:postgres-socket-factory:1.5.0'
+	runtimeOnly 'com.h2database:h2:2.1.210'
+
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'nl.jqno.equalsverifier:equalsverifier:3.10'
+}
+
+// dockerCompose plugin: https://github.com/avast/gradle-docker-compose-plugin
+dockerCompose {
+	projectName = rootProject.name
+	dockerComposeWorkingDirectory = project.file(project.getRootDir().toString())
+}
+
+test {
+	useJUnitPlatform()
+}
+
+tasks.withType(JavaCompile) {
+	options.compilerArgs = [
+			'-Amapstruct.suppressGeneratorTimestamp=true'
+	]
+}
+
+jib {
+    container {
+        jvmFlags = ['-Dspring.profiles.active=deployment']
+    }
+}
+
+bootRun {
+	systemProperty 'spring.profiles.active', findProperty('profile') ?: 'local'
+}

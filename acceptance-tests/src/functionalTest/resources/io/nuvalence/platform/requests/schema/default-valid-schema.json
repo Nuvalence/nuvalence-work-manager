@@ -1,0 +1,14 @@
+{
+  "name": "test-valid",
+  "attributes": [
+    {
+      "name": "input",
+      "type": "String",
+      "constraints": [
+        {
+          "constraintType": "NotBlank"
+        }
+      ]
+    }
+  ]
+}

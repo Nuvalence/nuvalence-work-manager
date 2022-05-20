@@ -1,0 +1,22 @@
+{
+  "key": "test-key",
+  "name": "test-valid",
+  "processDefinitionKey": "test-process",
+  "entitySchema": "test-schema",
+  "defaultStatus": "incomplete",
+  "category": "test",
+  "taskFormMappings": [
+    {
+      "taskDefinitionId": "test-task",
+      "formId": "71185226-a4dc-4a34-b2a6-bac8f7e05a4b",
+      "role": "customer"
+    }
+  ],
+  "namedFormMappings": [
+    {
+      "formConfigName": "test-form",
+      "formId": "71185226-a4dc-4a34-b2a6-bac8f7e05a4b",
+      "role": "customer"
+    }
+  ]
+}
