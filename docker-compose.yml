@@ -40,7 +40,6 @@ services:
 
   workmanager:
     container_name: workmanager
-    image: 'docker-spring-boot-postgres:latest'
     build:
       context: .
       dockerfile: workmanager.Dockerfile
