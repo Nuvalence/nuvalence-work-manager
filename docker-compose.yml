@@ -1,4 +1,4 @@
-version: '3.9'
+version: '3'
 
 services:
   workmanagerpostgres:
@@ -42,12 +42,11 @@ services:
     container_name: workmanager
     build:
       context: .
-      dockerfile: workmanager.Dockerfile
+      dockerfile: Dockerfile
     ports:
       - "8080:8080"
     depends_on:
-      workmanagerpostgres:
-        condition: service_healthy
+      - workmanagerpostgres
     networks:
       - work-manager
 
