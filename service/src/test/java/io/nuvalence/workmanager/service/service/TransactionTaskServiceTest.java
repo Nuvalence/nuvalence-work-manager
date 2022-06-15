@@ -1,5 +1,7 @@
 package io.nuvalence.workmanager.service.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.nuvalence.workmanager.service.domain.dynamicschema.Entity;
 import io.nuvalence.workmanager.service.domain.dynamicschema.Schema;
 import io.nuvalence.workmanager.service.domain.transaction.MissingEntityException;
@@ -53,7 +55,7 @@ class TransactionTaskServiceTest {
     }
 
     @Test
-    void completeTask() throws MissingEntityException, MissingTaskException {
+    void completeTask() throws MissingEntityException, MissingTaskException, JsonProcessingException {
         // Arrange
         final Transaction transaction = Transaction.builder()
                 .id(UUID.randomUUID())
@@ -61,20 +63,25 @@ class TransactionTaskServiceTest {
                 .processInstanceId("process-instance")
                 .status("incomplete")
                 .build();
+        final Map<String, Object> variables = Map.of("foo", "bar");
         final Entity entity = new Entity(Schema.builder().build(), transaction.getEntityId());
         Mockito.when(entityService.getEntityById(entity.getId())).thenReturn(Optional.of(entity));
         transaction.loadEntity(entityService);
-        Mockito.when(entityMapper.convertAttributesToGenericMap(entity)).thenReturn(Map.of("foo", "bar"));
+        Mockito.when(entityMapper.convertAttributesToGenericMap(entity)).thenReturn(variables);
         final Task task = new TaskEntity("task-id");
         Mockito.when(taskQuery.processInstanceId(transaction.getProcessInstanceId())).thenReturn(taskQuery);
         Mockito.when(taskQuery.taskDefinitionKey(task.getId())).thenReturn(taskQuery);
         Mockito.when(taskQuery.list()).thenReturn(List.of(task));
 
         // Act
-        service.completeTask(transaction, task.getId());
+        service.completeTask(transaction, task.getId(), "foo");
 
         // Assert
-        Mockito.verify(taskService).complete(task.getId(), Map.of("data", Map.of("foo", "bar")));
+        Mockito.verify(taskService).complete(task.getId(), Map.of(
+                "data", variables,
+                "dataJSON", new ObjectMapper().writeValueAsString(variables),
+                "condition", "foo"
+        ));
     }
 
     @Test
@@ -93,7 +100,7 @@ class TransactionTaskServiceTest {
         Mockito.when(taskQuery.list()).thenReturn(List.of());
 
         // Act and Assert
-        assertThrows(MissingTaskException.class, () -> service.completeTask(transaction, "task-id"));
+        assertThrows(MissingTaskException.class, () -> service.completeTask(transaction, "task-id", "foo"));
     }
 
 }

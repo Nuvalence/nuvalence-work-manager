@@ -46,8 +46,4 @@ replay_pid*
 .terraform*
 *.tfstate
 *.tfstate.backup
-
-# OS-specific
-.DS_Store
-acceptance-tests/bin/
-service/bin/
+tfplan.out

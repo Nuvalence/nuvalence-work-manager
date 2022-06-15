@@ -4,13 +4,13 @@ services:
   workmanagerpostgres:
     image: 'postgres:14-alpine'
     ports:
-      - "5432:5432"
+      - "5438:5438"
     container_name: workmanagerpostgres
     environment:
       - POSTGRES_DB=workmanagerpostgres
       - POSTGRES_USER=root
       - POSTGRES_PASSWORD=root
-      - PGPORT=5432
+      - PGPORT=5438
       - PGDATABASE=workmanagerpostgres
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]

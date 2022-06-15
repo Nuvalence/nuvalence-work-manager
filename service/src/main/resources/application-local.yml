@@ -6,6 +6,11 @@ spring:
     password: sa
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
+    show-sql: true
+    hibernate:
+      naming:
+        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyJpaImpl
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
   h2:
     console:
       enabled: true
@@ -28,3 +33,6 @@ camunda:
       id: admin
       password: admin
       firstName: Admin
+
+userManagement:
+  baseUrl: "https://dummy-url.app"

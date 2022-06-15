@@ -6,30 +6,6 @@ info:
     Customizable work item manager that leverages Camunda workflows (BPMN and DMN), Form.io and customizable data types
     to model online transaction processing.
 paths:
-  /actions/{processInstanceId}:
-    get:
-      summary: Get a list of all available actions for the task related to the given processInstanceId
-      operationId: getActions
-      tags: [ 'Action' ]
-      parameters:
-        - in: path
-          name: processInstanceId
-          description: processInstanceId to find the related task and to return available actions for it
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: The requested list of available actions.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: string
-        '404':
-          description: There are no available actions to the task related to the given processInstanceId.
   /admin/entity/schema:
     post:
       summary: Create or Update a schema definition.
@@ -168,6 +144,48 @@ paths:
                 $ref: '#/components/schemas/FormConfigDefinitionModel'
         '404':
           description: A form config with the given name does not exist.
+  /admin/formconfig/publish:
+    put:
+      summary: Set the status of a given form configuration to published.
+      operationId: putPublishFormConfig
+      tags: [ 'FormConfig' ]
+      requestBody:
+        description: The ID of the form configuration to publish.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FormConfigQueryParameters"
+      responses:
+        '200':
+          description: The form was published successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormConfigDefinitionModel"
+        '404':
+          description: Form with the given ID does not exist.
+  /admin/formconfig/unpublish:
+    put:
+      summary: Set the status of a given form configuration to draft.
+      operationId: putUnpublishFormConfig
+      tags: [ 'FormConfig' ]
+      requestBody:
+        description: The ID of the form configuration to unpublish.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FormConfigQueryParameters"
+      responses:
+        '200':
+          description: The form was unpublished successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormConfigDefinitionModel"
+        '404':
+          description: Form with the given ID does not exist.
   /admin/transaction:
     post:
       summary: Create or Update a transaction definition.
@@ -216,7 +234,7 @@ paths:
         - in: query
           name: category
           description: Full or partial name to filter returned transaction definitions by category.
-          required: true
+          required: false
           schema:
             type: string
       responses:
@@ -250,6 +268,79 @@ paths:
                 $ref: '#/components/schemas/TransactionDefinitionModel'
         '404':
           description: A schema with the given name does not exist.
+  /admin/transaction/linktype:
+    post:
+      summary: Create or update a transaction link type which can be assigned to a transaction definition.
+      operationId: postTransactionLinkType
+      tags: [ 'Transaction' ]
+      requestBody:
+        description: The transaction link type to create.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionLinkTypeModel'
+      responses:
+        201:
+          description: The created transaction link type.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionLinkTypeModel'
+  /admin/transaction/linktypes:
+    get:
+      summary: Get list of transaction link types.
+      operationId: getTransactionLinkTypes
+      tags: [ 'Transaction' ]
+      responses:
+        200:
+          description: List of created transaction link types.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransactionLinkTypeModel'
+  /admin/transaction/allowedlink:
+    post:
+      summary: Create an allowed link rule for a transaction definition.
+      operationId: postAllowedLinkToDefinition
+      tags: [ 'Transaction' ]
+      requestBody:
+        description: The link type to allow on a transaction definition.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AllowedLinkCreationRequest'
+      responses:
+        201:
+          description: The created transaction link type.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AllowedLinkModel'
+  /admin/transaction/allowedlinks/{key}:
+    get:
+      summary: Get list of allowed links for a transaction definition by transaction definition key.
+      operationId: getTransactionDefinitionAllowedLinksByKey
+      tags: [ 'Transaction' ]
+      parameters:
+        - in: path
+          name: key
+          description: The transaction definition key to search on.
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Collection of allowed links for a transaction definition.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AllowedLinkModel'
   /entity:
     post:
       summary: Create or Update an entity.
@@ -366,6 +457,11 @@ paths:
       summary: Create a new transaction instance.
       operationId: postTransaction
       tags: [ 'Transaction' ]
+      parameters:
+        - in: header
+          name: Authorization
+          schema:
+            type: string
       requestBody:
         description: Transaction Creation Request.
 
@@ -401,6 +497,79 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/TransactionModel'
+  /transaction/search:
+    get:
+      summary: Get filtered list of transactions
+      operationId: getFilteredTransactions
+      tags: [ 'Transaction' ]
+      parameters:
+        - in: query
+          name: transactionDefinitionKey
+          description: Key of the transaction definition to fetch transactions for.
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: category
+          description: category key to filter transactions by.
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: startDate
+          description: start date to filter transactions by.
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: endDate
+          description: end date to filter transactions by.
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: priority
+          description: priority to filter transactions by.
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: status
+          description: status to filter transactions by.
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: sortCol
+          description: the column to sort the transactions by.
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: sortDir
+          description: the direction to sort the transactions by.
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: pageNumber
+          description: the page number to show transactions for (default = 0).
+          required: false
+          schema:
+            type: integer
+        - in: query
+          name: pageSize
+          description: the number of transactions to retrieve (default = 25).
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Collection of transaction matching filter criteria.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedTransactionModel'
   /transaction/category:
     get:
       summary: Get list of transactions by transaction category.
@@ -490,6 +659,93 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/TransactionModel'
+  /transaction/link:
+    post:
+      summary: Create a link between two transactions
+      operationId: linkTransactions
+      tags: [ 'Transaction' ]
+      requestBody:
+        description: The transaction link creation request.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionLinkCreationRequest'
+      responses:
+        201:
+          description: The created transaction link id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionLinkModel'
+  /transaction/linkedtransactions/{id}:
+    get:
+      summary: Get the linked transactions for a given transaction id
+      operationId: getLinkedTransactionsById
+      tags: [ 'Transaction' ]
+      parameters:
+        - in: path
+          name: id
+          description: The transaction id to search on.
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: The list of linked transactions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LinkedTransaction'
+  /transaction/statuses:
+    get:
+      summary: Get list of available statuses defined in Camunda workflow
+      operationId: getAvailableStatuses
+      tags: [ 'Transaction' ]
+      parameters:
+        - in: query
+          name: type
+          description: The type of statuses to retrieve (public or internal).  Default is public.
+          schema:
+            type: string
+            enum: [ public, internal ]
+        - in: query
+          name: category
+          description: (Optional) The transaction definition category to search for
+          schema:
+            type: string
+        - in: query
+          name: key
+          description: (Optional) The transaction definition key to search for
+          schema:
+            type: string
+      responses:
+        200:
+          description: The list of available statuses.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+  /admin/console/dashboard:
+    get:
+      summary: Get the information to display for admin console
+      operationId: getAdminConsoleDashboard
+      tags: ['AdminConsoleDashboard']
+      responses:
+        '200':
+          description: The requested admin console information.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminConsoleDashboardModel'
+
 components:
   schemas:
     EntityModel:
@@ -644,16 +900,23 @@ components:
       required:
         - taskDefinitionId
         - taskName
+        - taskConditions
       properties:
         taskDefinitionId:
           type: string
         taskName:
           type: string
+        taskConditions:
+          type: array
+          items:
+            type: string
     FormConfigDefinitionModel:
       type: object
       required:
         - name
         - schema
+        - version
+        - status
         - formConfigJson
       properties:
         id:
@@ -664,7 +927,38 @@ components:
         schema:
           type: string
         formConfigJson:
+          type: object
+          additionalProperties: true
+        rendererOptions:
+          type: object
+          additionalProperties: true
+        description:
           type: string
+        version:
+          type: string
+        status:
+          type: string
+          enum:
+            - draft
+            - published
+        createdBy:
+          type: string
+        lastUpdatedBy:
+          type: string
+        translationRequired:
+          type: boolean
+        createdTimeStamp:
+          type: string
+          format: date-time
+        lastUpdatedTimeStamp:
+          type: string
+          format: date-time
+    FormConfigQueryParameters:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
     TransactionCreationRequest:
       type: object
       required:
@@ -680,10 +974,23 @@ components:
         data:
           type: object
           additionalProperties: true
-        status:
+        condition:
           type: string
         priority:
           type: string
+        assignedTo:
+          type: string
+    PagedTransactionModel:
+      type: object
+      properties:
+        totalPages:
+          type: integer
+        totalCount:
+          type: number
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionModel'
     TransactionModel:
       type: object
       required:
@@ -696,6 +1003,8 @@ components:
           type: string
         priority:
           type: string
+        district:
+          type: string
         transactionDefinitionId:
           type: string
           format: uuid
@@ -704,6 +1013,14 @@ components:
         processInstanceId:
           type: string
         createdBy:
+          type: string
+        assignedTo:
+          type: string
+        createdByDisplayName:
+          type: string
+        subjectUserId:
+          type: string
+        subjectUserDisplayName:
           type: string
         createdTimestamp:
           type: string
@@ -714,6 +1031,101 @@ components:
         data:
           type: object
           additionalProperties: true
+    TransactionLinkTypeModel:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        fromDescription:
+          type: string
+        toDescription:
+          type: string
+    AllowedLinkModel:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        transactionDefinitionKey:
+          type: string
+        transactionLinkType:
+          $ref: '#/components/schemas/TransactionLinkTypeModel'
+    AllowedLinkCreationRequest:
+      type: object
+      properties:
+        transactionDefinitionKey:
+          type: string
+        transactionLinkTypeId:
+          type: string
+          format: uuid
+    TransactionLinkModel:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fromTransactionId:
+          type: string
+          format: uuid
+        toTransactionId:
+          type: string
+          format: uuid
+        transactionLinkType:
+          $ref: '#/components/schemas/TransactionLinkTypeModel'
+    TransactionLinkCreationRequest:
+      type: object
+      properties:
+        fromTransactionId:
+          type: string
+          format: uuid
+        toTransactionId:
+          type: string
+          format: uuid
+        transactionLinkTypeId:
+          type: string
+          format: uuid
+    LinkedTransaction:
+      type: object
+      properties:
+        description:
+          type: string
+        linkedTransactionId:
+          type: string
+          format: uuid
+    AdminConsoleDashboardModel:
+      type: object
+      properties:
+        formId:
+          type: string
+          format: uuid
+        transactionDefinitionId:
+          type: string
+          format: uuid
+        description:
+          type: string
+        category:
+          type: string
+        version:
+          type: string
+        status:
+          type: string
+        createdTimeStamp:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+        lastUpdatedBy:
+          type: string
+        translationRequired:
+          type: boolean
+        transactionDefinitionKey:
+          type: string
+        lastUpdatedTimeStamp:
+          type: string
+          format: date-time
     Error:
       type: "object"
       required:

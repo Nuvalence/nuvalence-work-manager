@@ -79,10 +79,12 @@ class TransactionMapperTest {
                 .entityId(UUID.randomUUID())
                 .processInstanceId("process-id")
                 .createdBy("Dummy user")
+                .assignedTo("Dummy Agent")
                 .createdTimestamp(OffsetDateTime.now())
                 .lastUpdatedTimestamp(OffsetDateTime.now())
                 .status("new")
                 .priority("low")
+                .district("DISTRICT1")
                 .build();
         Mockito.when(entityService.getEntityById(transaction.getEntityId())).thenReturn(Optional.of(entity));
         transaction.loadEntity(entityService);
@@ -91,7 +93,9 @@ class TransactionMapperTest {
                 .transactionDefinitionId(transaction.getTransactionDefinitionId())
                 .processInstanceId("process-id")
                 .createdBy("Dummy user")
+                .assignedTo("Dummy Agent")
                 .priority("low")
+                .district("DISTRICT1")
                 .createdTimestamp(transaction.getCreatedTimestamp())
                 .lastUpdatedTimestamp(transaction.getLastUpdatedTimestamp())
                 .status("new")

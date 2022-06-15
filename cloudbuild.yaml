@@ -8,6 +8,7 @@ steps:
       - jib
       - '--image'
       - '$_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA'
+    secretEnv: ['_FIREBASE_CONFIG', '_FIREBASE_API_KEY']
   - name: 'hashicorp/terraform:1.0.0'
     id: Terraform Apply
     entrypoint: sh
@@ -22,6 +23,12 @@ steps:
         terraform apply -auto-approve -var gcp_project_id=$PROJECT_ID -var gcp_region=$_DEPLOY_REGION -var service_name=$_SERVICE_NAME -var image='$_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA'
 images:
   - '$_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA'
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/firebase-api-key/versions/latest
+      env: '_FIREBASE_CONFIG'
+    - versionName: projects/$PROJECT_ID/secrets/firebase-config/versions/latest
+      env: '_FIREBASE_API_KEY'
 options:
   substitutionOption: ALLOW_LOOSE
 substitutions:

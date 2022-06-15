@@ -47,7 +47,11 @@ public class TransactionDefinitionService {
      * @return List of transaction definitions matching query
      */
     public List<TransactionDefinition> getTransactionDefinitionsByPartialNameMatch(final String name) {
-        return repository.searchByPartialName(name);
+        if (name == null) {
+            return repository.getAllTransactions();
+        } else {
+            return repository.searchByPartialName(name);
+        }
     }
 
     /**
@@ -57,7 +61,11 @@ public class TransactionDefinitionService {
      * @return List of transaction definitions matching query
      */
     public List<TransactionDefinition> getTransactionDefinitionsByPartialCategoryMatch(final String category) {
-        return repository.searchByPartialCategory(category);
+        if (category == null) {
+            return repository.getAllTransactions();
+        } else {
+            return repository.searchByPartialCategory(category);
+        }
     }
 
     /**
@@ -69,5 +77,4 @@ public class TransactionDefinitionService {
     public TransactionDefinition saveTransactionDefinition(final TransactionDefinition transactionDefinition) {
         return repository.save(transactionDefinition);
     }
-
 }

@@ -1,10 +1,15 @@
 package io.nuvalence.workmanager.service.domain.dynamicschema;
 
+import io.nuvalence.workmanager.service.domain.dynamicschema.attributes.Document;
+import io.nuvalence.workmanager.service.domain.dynamicschema.attributes.DocumentStatus;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -60,6 +65,81 @@ class DataConversionSupportTest {
         assertFalse(DataConversionSupport.convert("FALSE", Boolean.class));
         assertNull(DataConversionSupport.convert("Foo", Boolean.class));
         assertNull(DataConversionSupport.convert("", Boolean.class));
+    }
+
+    @Test
+    void convertObjectMapToDocument() {
+        Map<Object, Object> documentMap = new HashMap<Object, Object>();
+        documentMap.put("documentId", "94c2ca16-dad1-11ec-b1ac-2aaa794f39fc");
+        documentMap.put("status", "PENDING");
+        documentMap.put("rejectionReason", "NONE");
+        documentMap.put("fileName", "virus.bat");
+
+        Document expected = Document.builder()
+                .documentId(UUID.fromString("94c2ca16-dad1-11ec-b1ac-2aaa794f39fc"))
+                .status(DocumentStatus.PENDING)
+                .rejectionReason(null)
+                .build();
+
+        Document received = DataConversionSupport.convert(documentMap, Document.class);
+
+        assertEquals(received.getDocumentId(), expected.getDocumentId());
+        assertEquals(received.getStatus(), expected.getStatus());
+        assertEquals(received.getRejectionReason(), expected.getRejectionReason());
+    }
+
+    @Test
+    void convertObjectMapToDocument_noDocumentId() {
+        Map<Object, Object> documentMap = new HashMap<>();
+        documentMap.put("status", "PENDING");
+
+        Document received = DataConversionSupport.convert(documentMap, Document.class);
+
+        assertNull(received);
+    }
+
+    @Test
+    void convertObjectMapToDocument_invalidStatus() {
+        Map<Object, Object> documentMap = new HashMap<Object, Object>();
+        documentMap.put("documentId", "94c2ca16-dad1-11ec-b1ac-2aaa794f39fc");
+        documentMap.put("status", "Jib-Jub-Scrib-Scrub");
+        documentMap.put("fileName", "virus.bat");
+
+        Document received = DataConversionSupport.convert(documentMap, Document.class);
+
+        assertNull(received.getRejectionReason());
+        assertEquals(received.getStatus(), DocumentStatus.PENDING);
+    }
+
+    @Test
+    void convertObjectMapToDocument_nullStatusReason() {
+        Map<Object, Object> documentMap = new HashMap<Object, Object>();
+        documentMap.put("documentId", "94c2ca16-dad1-11ec-b1ac-2aaa794f39fc");
+        documentMap.put("status", DocumentStatus.PENDING.toString());
+        documentMap.put("rejectionReason", null);
+        documentMap.put("fileName", "virus.bat");
+
+        Document received = DataConversionSupport.convert(documentMap, Document.class);
+
+        assertNull(received.getRejectionReason());
+    }
+
+    @Test
+    void convertObjectMapToDocument_optionalFields() {
+        Map<Object, Object> documentMap = new HashMap<Object, Object>();
+        documentMap.put("documentId", "94c2ca16-dad1-11ec-b1ac-2aaa794f39fc");
+        documentMap.put("fileName", "koolade-license");
+
+        Document received = DataConversionSupport.convert(documentMap, Document.class);
+
+        assertEquals(UUID.fromString((String) documentMap.get("documentId")), received.getDocumentId());
+        assertEquals(DocumentStatus.PENDING, received.getStatus());
+        assertNull(received.getRejectionReason());
+
+        documentMap.put("status", DocumentStatus.REJECTED.toString());
+        received = DataConversionSupport.convert(documentMap, Document.class);
+
+        assertEquals(received.getStatus(), DocumentStatus.REJECTED);
     }
 
     @Test

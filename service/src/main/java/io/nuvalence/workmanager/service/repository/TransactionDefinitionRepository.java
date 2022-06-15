@@ -13,6 +13,9 @@ import java.util.UUID;
  */
 public interface TransactionDefinitionRepository extends CrudRepository<TransactionDefinition, UUID> {
 
+    @Query("SELECT td FROM TransactionDefinition td")
+    List<TransactionDefinition> getAllTransactions();
+
     @Query("SELECT td FROM TransactionDefinition td WHERE td.name LIKE %:name%")
     List<TransactionDefinition> searchByPartialName(@Param("name") String name);
 

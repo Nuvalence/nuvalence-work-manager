@@ -2,6 +2,7 @@ package io.nuvalence.workmanager.service.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.nuvalence.workmanager.service.domain.dynamicschema.Schema;
+import io.nuvalence.workmanager.service.domain.dynamicschema.jpa.SchemaRow;
 import io.nuvalence.workmanager.service.mapper.SchemaMapper;
 import io.nuvalence.workmanager.service.repository.SchemaRepository;
 import lombok.RequiredArgsConstructor;
@@ -44,7 +45,14 @@ public class SchemaService {
      * @return List of Schemas matching query
      */
     public List<Schema> getSchemasByPartialNameMatch(final String query) {
-        return schemaRepository.searchByPartialName(query).stream()
+        List<SchemaRow> schemaList;
+        if (query == null) {
+            schemaList = schemaRepository.getAllSchemas();
+        } else {
+            schemaList = schemaRepository.searchByPartialName(query);
+        }
+
+        return schemaList.stream()
                 .map((row) -> {
                     try {
                         return SchemaMapper.INSTANCE.schemaRowToSchema(row);

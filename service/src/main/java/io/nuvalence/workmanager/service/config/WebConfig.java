@@ -1,4 +1,4 @@
-package io.nuvalence.workmanager.service;
+package io.nuvalence.workmanager.service.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -6,7 +6,6 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -17,20 +16,6 @@ import java.util.List;
  */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
-
-    /**
-     * This override opens all controllers to all origins and methods.
-     * We will want to adjust this when we are deploying this.
-     *
-     * @param registry refers to the Cors registry.
-     */
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**")
-                .allowedOrigins("*")
-                .allowedMethods("*")
-                .allowedHeaders("Content-Type");
-    }
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
@@ -53,7 +38,7 @@ public class WebConfig implements WebMvcConfigurer {
     }
 
     /**
-     * This object mapper disables the serializable feature WRITE_DATES_AS_TIMESTAMPS.
+     * This object mapper disables the serializeable feature WRITE_DATES_AS_TIMESTAMPS.
      * This ensures all object mappers correctly format datetime stamps as defined in their local env.
      * @return
      */
