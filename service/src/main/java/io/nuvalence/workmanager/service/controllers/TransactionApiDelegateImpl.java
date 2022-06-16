@@ -12,6 +12,7 @@ import io.nuvalence.workmanager.service.domain.transaction.TransactionLinkNotAll
 import io.nuvalence.workmanager.service.generated.controllers.TransactionApiDelegate;
 import io.nuvalence.workmanager.service.generated.models.LinkedTransaction;
 import io.nuvalence.workmanager.service.generated.models.PagedTransactionModel;
+import io.nuvalence.workmanager.service.generated.models.TransactionCountByStatusModel;
 import io.nuvalence.workmanager.service.generated.models.TransactionCreationRequest;
 import io.nuvalence.workmanager.service.generated.models.TransactionLinkCreationRequest;
 import io.nuvalence.workmanager.service.generated.models.TransactionLinkModel;
@@ -129,13 +130,17 @@ public class TransactionApiDelegateImpl implements TransactionApiDelegate {
                                                                          String category,
                                                                          String startDate,
                                                                          String endDate,
-                                                                         String priority,
-                                                                         String status,
+                                                                         List<String> priority,
+                                                                         List<String> status,
+                                                                         List<String> assignedTo,
+                                                                         Boolean assignedToMe,
                                                                          String sortCol,
                                                                          String sortDir,
                                                                          Integer pageNumber,
                                                                          Integer pageSize) {
         try {
+            assignedTo = getAssignedToList(assignedTo, assignedToMe);
+
             TransactionFilters filters = TransactionFilters.builder()
                     .transactionDefinitionKey(transactionDefinitionKey)
                     .category(category)
@@ -143,6 +148,7 @@ public class TransactionApiDelegateImpl implements TransactionApiDelegate {
                     .endDate(OffsetDateTimeMapper.INSTANCE.toOffsetDateTimeEndOfDay(endDate))
                     .priority(priority)
                     .status(status)
+                    .assignedTo(assignedTo)
                     .sortCol(sortCol)
                     .sortDir(sortDir)
                     .pageNumber(pageNumber)
@@ -162,6 +168,32 @@ public class TransactionApiDelegateImpl implements TransactionApiDelegate {
             log.error("One or more transactions reference missing entities.", e);
             return ResponseEntity.status(500).build();
         }
+    }
+
+    @Override
+    public ResponseEntity<List<TransactionCountByStatusModel>> getTransactionCountByStatus(
+            String transactionDefinitionKey,
+            String category,
+            String startDate,
+            String endDate,
+            List<String> priority,
+            List<String> status,
+            List<String> assignedTo,
+            Boolean assignedToMe) {
+        assignedTo = getAssignedToList(assignedTo, assignedToMe);
+
+        TransactionFilters filters = TransactionFilters.builder()
+                .transactionDefinitionKey(transactionDefinitionKey)
+                .category(category)
+                .startDate(OffsetDateTimeMapper.INSTANCE.toOffsetDateTimeStartOfDay(startDate))
+                .endDate(OffsetDateTimeMapper.INSTANCE.toOffsetDateTimeEndOfDay(endDate))
+                .priority(priority)
+                .status(status)
+                .assignedTo(assignedTo)
+                .build();
+
+        List<TransactionCountByStatusModel> counts = service.getTransactionCountsByStatus(filters);
+        return ResponseEntity.ok(counts);
     }
 
     @Override
@@ -338,5 +370,19 @@ public class TransactionApiDelegateImpl implements TransactionApiDelegate {
                 ((WorkerToken) authentication).getOriginalToken());
         users.put(id, user.get());
         return user;
+    }
+
+    private List<String> getAssignedToList(List<String> assignedTo, Boolean assignedToMe) {
+        if (assignedToMe != null && assignedToMe) {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            Optional<User> user = userManagementClient.getUserByEmail(
+                    ((WorkerToken) authentication).getUserEmail(),
+                    ((WorkerToken) authentication).getOriginalToken());
+            if (user.isPresent()) {
+                assignedTo = List.of(user.get().getId().toString());
+            }
+        }
+
+        return assignedTo;
     }
 }

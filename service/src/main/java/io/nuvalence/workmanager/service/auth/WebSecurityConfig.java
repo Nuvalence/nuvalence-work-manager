@@ -58,8 +58,8 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("https://digital-intake.test-wp-ap.com",
-                "https://transaction-manager.test-wp-ap.com",
+        configuration.setAllowedOrigins(Arrays.asList("https://dummy-url.com",
+                "https://dummy-url-2.com",
                 "http://localhost:4200", "http://localhost:4201"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowCredentials(true);

@@ -23,8 +23,11 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import javax.transaction.Transactional;
 
@@ -152,6 +155,50 @@ public class WorkflowTasksService {
             }
         }
         return new ArrayList<>(distinctStatuses);
+    }
+
+    /**
+     * Gets a map of public to internal statuses via Camunda extension properties.
+     *
+     * @param category optional param to search by definition category
+     * @param key optional param to search by definition key
+     * @return a map of public to internal statuses
+     */
+    @SuppressWarnings("checkstyle:CyclomaticComplexity")
+    public Map<String, List<String>> getStatusMap(String category, String key) {
+        List<ProcessDefinition> processDefinitions = createProcessDefinitionSearchAndRetrieve(category, key);
+
+        Map<String, List<String>> statusMap = new HashMap<>();
+        for (ProcessDefinition definition : processDefinitions) {
+            try {
+                BpmnModelInstance modelInstance = Bpmn.readModelFromStream(
+                        new FileInputStream(definition.getResourceName()));
+                Collection<CamundaProperty> properties = modelInstance
+                        .getModelElementsByType(CamundaProperty.class);
+                for (CamundaProperty property : properties) {
+                    if (property.getAttributeValue("name").equals(StatusType.PUBLIC.propertyName)) {
+                        String publicStatus = property.getCamundaValue();
+
+                        Optional<CamundaProperty> internalStatusProperty = property.getParentElement()
+                                .getChildElementsByType(CamundaProperty.class).stream().filter(p ->
+                                        p.getAttributeValue("name")
+                                                .equals(StatusType.INTERNAL.propertyName)
+                                        ).findFirst();
+
+                        if (internalStatusProperty.isPresent()) {
+                            if (!statusMap.containsKey(publicStatus)) {
+                                statusMap.put(publicStatus, new ArrayList<>());
+                            }
+                            statusMap.get(publicStatus).add(internalStatusProperty.get().getCamundaValue());
+                        }
+                    }
+                }
+            } catch (FileNotFoundException e) {
+                log.warn("error parsing bpmn file {} for workflow statuses", definition.getResourceName());
+            }
+        }
+
+        return statusMap;
     }
 
     private List<ProcessDefinition> createProcessDefinitionSearchAndRetrieve(String category, String key) {

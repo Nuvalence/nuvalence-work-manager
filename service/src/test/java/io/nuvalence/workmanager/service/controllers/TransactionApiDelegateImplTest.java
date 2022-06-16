@@ -8,6 +8,7 @@ import io.nuvalence.workmanager.service.domain.transaction.MissingEntityExceptio
 import io.nuvalence.workmanager.service.domain.transaction.MissingTaskException;
 import io.nuvalence.workmanager.service.domain.transaction.Transaction;
 import io.nuvalence.workmanager.service.domain.transaction.TransactionDefinition;
+import io.nuvalence.workmanager.service.generated.models.TransactionCountByStatusModel;
 import io.nuvalence.workmanager.service.generated.models.TransactionCreationRequest;
 import io.nuvalence.workmanager.service.generated.models.TransactionUpdateRequest;
 import io.nuvalence.workmanager.service.mapper.MissingSchemaException;
@@ -210,8 +211,9 @@ class TransactionApiDelegateImplTest {
                 .category("test")
                 .startDate(OffsetDateTime.now())
                 .endDate(OffsetDateTime.now())
-                .priority("medium")
-                .status("low")
+                .priority(List.of("medium"))
+                .status(List.of("new"))
+                .assignedTo(List.of(UUID.randomUUID().toString()))
                 .sortCol("id")
                 .sortDir("asc")
                 .pageNumber(0)
@@ -235,8 +237,9 @@ class TransactionApiDelegateImplTest {
                         + "&category=" + filters.getCategory()
                         + "&startDate=" + OffsetDateTimeMapper.INSTANCE.toString(filters.getStartDate())
                         + "&endDate=" + OffsetDateTimeMapper.INSTANCE.toString(filters.getEndDate())
-                        + "&priority=" + filters.getPriority()
-                        + "&status=" + filters.getStatus()
+                        + "&priority=" + filters.getPriority().get(0)
+                        + "&status=" + filters.getStatus().get(0)
+                        + "&assignedTo=" + filters.getAssignedTo().get(0)
                         + "&sortCol=" + filters.getSortCol()
                         + "&sortDir=" + filters.getSortDir()
                         + "&pageNumber=" + filters.getPageNumber()
@@ -695,6 +698,40 @@ class TransactionApiDelegateImplTest {
                 .andExpect(status().isFailedDependency());
     }
 
+    @Test
+    void getTransactionCountByStatus() throws Exception {
+        // Arrange
+
+        final TransactionFilters filters = TransactionFilters.builder()
+                .transactionDefinitionKey("dummy")
+                .category("test")
+                .startDate(OffsetDateTime.now())
+                .endDate(OffsetDateTime.now())
+                .priority(List.of("medium"))
+                .status(List.of("new"))
+                .assignedTo(List.of(UUID.randomUUID().toString()))
+                .build();
+
+        final TransactionCountByStatusModel count = new TransactionCountByStatusModel();
+        count.setStatus("new");
+        count.setCount(123);
+
+        Mockito.when(transactionService.getTransactionCountsByStatus(any())).thenReturn(List.of(count));
+
+        // Act and Assert
+        mockMvc.perform(get("/transaction/statuses/count?"
+                + "transactionDefinitionKey=" + filters.getTransactionDefinitionKey()
+                + "&category=" + filters.getCategory()
+                + "&startDate=" + OffsetDateTimeMapper.INSTANCE.toString(filters.getStartDate())
+                + "&endDate=" + OffsetDateTimeMapper.INSTANCE.toString(filters.getEndDate())
+                + "&priority=" + filters.getPriority().get(0)
+                + "&status=" + filters.getStatus().get(0)
+                + "&assignedTo=" + filters.getAssignedTo().get(0)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].status", comparesEqualTo("new")))
+                .andExpect(jsonPath("$[0].count", comparesEqualTo(123)));
+    }
 
     private Optional<User> createUser() {
         return Optional.ofNullable(User.builder()

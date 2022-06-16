@@ -7,6 +7,7 @@ import io.nuvalence.workmanager.service.domain.transaction.MissingEntityExceptio
 import io.nuvalence.workmanager.service.domain.transaction.MissingTaskException;
 import io.nuvalence.workmanager.service.domain.transaction.Transaction;
 import io.nuvalence.workmanager.service.domain.transaction.TransactionDefinition;
+import io.nuvalence.workmanager.service.generated.models.TransactionCountByStatusModel;
 import io.nuvalence.workmanager.service.mapper.MissingSchemaException;
 import io.nuvalence.workmanager.service.models.TransactionFilters;
 import io.nuvalence.workmanager.service.repository.TransactionRepository;
@@ -42,11 +43,15 @@ class TransactionServiceTest {
     @Mock
     private EntityService entityService;
 
+    @Mock
+    private WorkflowTasksService workflowTasksService;
+
     private TransactionService service;
 
     @BeforeEach
     void setup() {
-        service = new TransactionService(repository, factory, transactionTaskService, entityService);
+        service = new TransactionService(repository, factory, transactionTaskService, entityService,
+                workflowTasksService);
     }
 
     @Test
@@ -231,8 +236,9 @@ class TransactionServiceTest {
                 .category("test")
                 .startDate(OffsetDateTime.now())
                 .endDate(OffsetDateTime.now())
-                .priority("medium")
-                .status("low")
+                .priority(List.of("medium"))
+                .status(List.of("new"))
+                .assignedTo(List.of(UUID.randomUUID().toString()))
                 .sortCol("id")
                 .sortDir("asc")
                 .pageNumber(0)
@@ -254,5 +260,35 @@ class TransactionServiceTest {
 
         // Act and Assert
         assertEquals(pagedResults, service.getFilteredTransactions(filters));
+    }
+
+    @Test
+    void getTransactionCountsByStatus() {
+        // Arrange
+        final TransactionFilters filters = TransactionFilters.builder()
+                .transactionDefinitionKey("dummy")
+                .category("test")
+                .startDate(OffsetDateTime.now())
+                .endDate(OffsetDateTime.now())
+                .priority(List.of("medium"))
+                .status(List.of("new"))
+                .assignedTo(List.of(UUID.randomUUID().toString()))
+                .build();
+
+        final TransactionCountByStatusModel count = new TransactionCountByStatusModel();
+        count.setStatus("new");
+        count.setCount(123);
+
+        Mockito
+                .when(repository.getTransactionCountsByStatus(ArgumentMatchers.any()))
+                .thenReturn(List.of(count));
+
+        // Act
+        List<TransactionCountByStatusModel> counts = service.getTransactionCountsByStatus(filters);
+
+        // Assert
+        assertEquals(counts.size(), 1);
+        assertEquals(counts.get(0).getCount(), count.getCount());
+        assertEquals(counts.get(0).getStatus(), count.getStatus());
     }
 }

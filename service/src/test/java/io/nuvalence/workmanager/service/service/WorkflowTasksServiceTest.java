@@ -16,4 +16,9 @@ public class WorkflowTasksServiceTest {
     void getAvailableStatuses() {
         assertNotNull(service.getCamundaStatuses("public", null, null));
     }
+
+    @Test
+    void getStatusMap() {
+        assertNotNull(service.getStatusMap(null, null));
+    }
 }

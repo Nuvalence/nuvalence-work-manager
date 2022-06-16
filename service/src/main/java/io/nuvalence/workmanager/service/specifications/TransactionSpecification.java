@@ -21,6 +21,7 @@ public class TransactionSpecification {
      * @param filters The filters to filter the transactions by
      * @return A list of filtered transactions
      */
+    @SuppressWarnings("checkstyle:CyclomaticComplexity")
     public Specification<Transaction> getTransactions(TransactionFilters filters) {
         return (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -33,8 +34,8 @@ public class TransactionSpecification {
             }
 
             if (StringUtils.isNotBlank(filters.getCategory())) {
-                predicates.add(criteriaBuilder.equal(transactionDefinitionJoin.get("category"),
-                        filters.getCategory()));
+                predicates.add(criteriaBuilder.like(transactionDefinitionJoin.get("category"),
+                        filters.getCategory() + "%"));
             }
 
             if (filters.getStartDate() != null) {
@@ -47,12 +48,16 @@ public class TransactionSpecification {
                         filters.getEndDate()));
             }
 
-            if (StringUtils.isNotBlank(filters.getPriority())) {
-                predicates.add(criteriaBuilder.equal(root.get("priority"), filters.getPriority()));
+            if (filters.getPriority() != null && filters.getPriority().size() > 0) {
+                predicates.add(root.get("priority").in(filters.getPriority()));
             }
 
-            if (StringUtils.isNotBlank(filters.getStatus())) {
-                predicates.add(criteriaBuilder.equal(root.get("status"), filters.getStatus()));
+            if (filters.getStatus() != null && filters.getStatus().size() > 0) {
+                predicates.add(root.get("status").in(filters.getStatus()));
+            }
+
+            if (filters.getAssignedTo() != null && filters.getAssignedTo().size() > 0) {
+                predicates.add(root.get("assignedTo").in(filters.getAssignedTo()));
             }
 
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));

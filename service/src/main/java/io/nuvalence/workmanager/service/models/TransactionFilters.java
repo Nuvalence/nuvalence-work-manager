@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 
 /**
  * The filters to filter the transactions by.
@@ -16,8 +17,10 @@ public class TransactionFilters extends BaseFilters {
     private String category;
     private OffsetDateTime startDate;
     private OffsetDateTime endDate;
-    private String priority;
-    private String status;
+    private List<String> priority;
+    private List<String> status;
+    private List<String> assignedTo;
+    private Boolean assignedToMe;
 
     /**
      * Builder for TransactionFilters.
@@ -28,6 +31,8 @@ public class TransactionFilters extends BaseFilters {
      * @param endDate The end date to filter transactions by
      * @param priority The priority to filter transactions by
      * @param status The status to filter transactions by
+     * @param assignedTo The assigned user to filter transactions by
+     * @param assignedToMe Filter transactions assigned to yourself
      * @param sortCol The column to filter transactions by
      * @param sortDir The direction to filter transactions by
      * @param pageNumber The number of the pages to get transactions
@@ -36,7 +41,8 @@ public class TransactionFilters extends BaseFilters {
     @Builder
     public TransactionFilters(String transactionDefinitionKey, String category,
                               OffsetDateTime startDate, OffsetDateTime endDate,
-                              String priority, String status, String sortCol, String sortDir,
+                              List<String> priority, List<String> status, List<String> assignedTo, Boolean assignedToMe,
+                              String sortCol, String sortDir,
                               Integer pageNumber, Integer pageSize) {
         super(sortCol, sortDir, pageNumber, pageSize);
         this.transactionDefinitionKey = transactionDefinitionKey;
@@ -45,5 +51,7 @@ public class TransactionFilters extends BaseFilters {
         this.endDate = endDate;
         this.priority = priority;
         this.status = status;
+        this.assignedTo = assignedTo;
+        this.assignedToMe = assignedToMe;
     }
 }

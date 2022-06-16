@@ -14,7 +14,7 @@ import java.util.UUID;
  * Repository for Transactions.
  */
 public interface TransactionRepository extends CrudRepository<Transaction, UUID>,
-        JpaSpecificationExecutor<Transaction> {
+        JpaSpecificationExecutor<Transaction>, TransactionRepositoryCustom {
 
     // TODO When we implement versioned transaction configuration, this will need to sort results
     @Query("SELECT t FROM Transaction t WHERE t.transactionDefinitionKey = :key")

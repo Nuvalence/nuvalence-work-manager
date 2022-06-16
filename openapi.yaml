@@ -532,13 +532,31 @@ paths:
           description: priority to filter transactions by.
           required: false
           schema:
-            type: string
+            type: array
+            items:
+              type: string
         - in: query
           name: status
           description: status to filter transactions by.
           required: false
           schema:
-            type: string
+            type: array
+            items:
+              type: string
+        - in: query
+          name: assignedTo
+          description: assigned user to filter transactions by.
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - in: query
+          name: assignedToMe
+          description: filter transactions assigned only to yourself (will ignore the value of assignedTo if true).
+          required: false
+          schema:
+            type: boolean
         - in: query
           name: sortCol
           description: the column to sort the transactions by.
@@ -731,6 +749,75 @@ paths:
                 type: array
                 items:
                   type: string
+  /transaction/statuses/count:
+    get:
+      summary: Get list of statuses with a count of how many transactions have each status
+      operationId: getTransactionCountByStatus
+      tags: ['Transaction' ]
+      parameters:
+        - in: query
+          name: transactionDefinitionKey
+          description: Key of the transaction definition to fetch transactions for.
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: category
+          description: category key to filter transactions by.
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: startDate
+          description: start date to filter transactions by.
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: endDate
+          description: end date to filter transactions by.
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: priority
+          description: priority to filter transactions by.
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - in: query
+          name: status
+          description: status to filter transactions by.
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - in: query
+          name: assignedTo
+          description: assigned user to filter transactions by.
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - in: query
+          name: assignedToMe
+          description: filter transactions assigned only to yourself (will ignore the value of assignedTo if true).
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Collection of transaction counts by status matching filter criteria.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransactionCountByStatusModel'
   /admin/console/dashboard:
     get:
       summary: Get the information to display for admin console
@@ -980,6 +1067,13 @@ components:
           type: string
         assignedTo:
           type: string
+    TransactionCountByStatusModel:
+      type: object
+      properties:
+        status:
+          type: string
+        count:
+          type: integer
     PagedTransactionModel:
       type: object
       properties:
