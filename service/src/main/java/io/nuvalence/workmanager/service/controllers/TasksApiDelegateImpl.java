@@ -23,9 +23,7 @@ public class TasksApiDelegateImpl implements TasksApiDelegate {
 
     @Override
     public ResponseEntity<List<TaskModel>> getActiveTasks(UUID id) {
-        final List<TaskModel> results = tasksService.getActiveTasksForTransactionByProcessId(id).stream()
-                .map(taskMapper.INSTANCE::taskToTaskModel)
-                .collect(Collectors.toList());
+        final List<TaskModel> results = tasksService.getActiveTasksForTransactionByProcessId(id);
 
         return ResponseEntity.status(200).body(results);
     }
@@ -38,5 +36,4 @@ public class TasksApiDelegateImpl implements TasksApiDelegate {
 
         return ResponseEntity.status(200).body(results);
     }
-    
 }

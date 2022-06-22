@@ -1,5 +1,24 @@
 {
   "name": "test-valid",
   "schema": "test-valid",
-  "formConfigJson": "test-json-string"
+  "rendererOptions": {
+    "buttonSettings": {
+      "showCancel": false,
+      "showNext": false,
+      "showPrevious": false,
+      "showSubmit": false
+    },
+    "language": "en",
+    "i18n": {
+      "es": {},
+      "en": {}
+    }
+  },
+  "formConfigJson": {"name":  "test"},
+  "description": "Example description",
+  "version": "1",
+  "status": "draft",
+  "createdBy": "Dummy user",
+  "lastUpdatedBy": "Dummy user",
+  "translationRequired": true
 }

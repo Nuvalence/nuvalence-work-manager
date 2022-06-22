@@ -51,9 +51,6 @@
             <column name="default_status" type="VARCHAR(255)">
                 <constraints nullable="false"/>
             </column>
-            <column name="category" type="VARCHAR(1024)">
-                <constraints nullable="true"/>
-            </column>
         </createTable>
     </changeSet>
     <changeSet id="add-transaction_task_form_mapping-table" author="jstgelais">
@@ -114,9 +111,6 @@
             <column name="form_config_json" type="JSONB">
                 <constraints nullable="false"/>
             </column>
-            <column name="renderer_options_json" type="JSONB">
-                <constraints nullable="true"/>
-            </column>
         </createTable>
         <addForeignKeyConstraint baseColumnNames="schema" baseTableName="form_config_definition"
                                  constraintName="fk_form_config_schema"
@@ -160,5 +154,189 @@
         <addForeignKeyConstraint baseColumnNames="entity_id" baseTableName="transaction"
                                  constraintName="fk_transaction_entity"
                                  referencedColumnNames="id" referencedTableName="dynamic_entity" />
+    </changeSet>
+    <changeSet id="add-transaction_link_type-table" author="kmanoleff">
+        <createTable tableName="transaction_link_type">
+            <column name="id" type="VARCHAR(36)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_transaction_link_type"/>
+            </column>
+            <column name="name" type="VARCHAR(1024)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="from_description" type="VARCHAR(1024)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="to_description" type="VARCHAR(1024)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="add-allowed_link-table" author="kmanoleff">
+        <createTable tableName="allowed_link">
+            <column name="id" type="VARCHAR(36)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_allowed_link"/>
+            </column>
+            <column name="transaction_definition_key" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="transaction_link_type_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseColumnNames="transaction_link_type_id" baseTableName="allowed_link"
+                                 constraintName="fk_allowed_link_transaction_link_type"
+                                 referencedColumnNames="id" referencedTableName="transaction_link_type" />
+    </changeSet>
+    <changeSet id="add-transaction_link-table" author="kmanoleff">
+        <createTable tableName="transaction_link">
+            <column name="id" type="VARCHAR(36)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_transaction_link"/>
+            </column>
+            <column name="from_transaction_id" type="VARCHAR(1024)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="to_transaction_id" type="VARCHAR(1024)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="transaction_link_type_id" type="VARCHAR(1024)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseColumnNames="from_transaction_id" baseTableName="transaction_link"
+                                 constraintName="fk_transaction_link_transaction_from"
+                                 referencedColumnNames="id" referencedTableName="transaction" />
+        <addForeignKeyConstraint baseColumnNames="to_transaction_id" baseTableName="transaction_link"
+                                 constraintName="fk_transaction_link_transaction_to"
+                                 referencedColumnNames="id" referencedTableName="transaction" />
+        <addForeignKeyConstraint baseColumnNames="transaction_link_type_id" baseTableName="transaction_link"
+                                 constraintName="fk_transaction_link_transaction_link_type"
+                                 referencedColumnNames="id" referencedTableName="transaction_link_type" />
+    </changeSet>
+    <changeSet id= "alter-form-config-json-type" author="gcusano">
+        <modifyDataType
+                columnName="form_config_json"
+                newDataType="TEXT"
+                tableName="form_config_definition"/>
+    </changeSet>
+    <changeSet id="alter-transaction-definition-table" author="apengu">
+        <addColumn tableName="transaction_definition">
+            <column name="category" type="VARCHAR(1024)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+    <changeSet id= "alter-form-config-json-type" author="apengu">
+        <modifyDataType
+                columnName="form_config_json"
+                newDataType="JSONB"
+                tableName="form_config_definition"/>
+    </changeSet>
+    <changeSet id="alter-form-config-definition-table" author="apengu">
+        <addColumn tableName="form_config_definition">
+            <column name="renderer_options_json" type="JSONB">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+    <changeSet id="alter-form-config-definition-table-add-new-columns" author="apengu">
+        <addColumn tableName="form_config_definition">
+            <column name="description" type="VARCHAR(1024)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="status" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="version" type="VARCHAR(36)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="createdBy" type="VARCHAR(64)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="lastUpdatedBy" type="VARCHAR(64)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="translationRequired" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+    <changeSet id="alter-transaction-table-add-district" author="gcastro">
+        <addColumn tableName="transaction">
+            <column name="district" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+    <changeSet id="alter-form-config-definition-table-add-complaintType-TransactionType-programArea" author="apengu">
+        <addColumn tableName="form_config_definition">
+            <column name="transaction_type" type="VARCHAR(1024)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="complaint_type" type="VARCHAR(1024)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="program_area" type="VARCHAR(1024)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="created_time_stamp" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+    <changeSet id="alter-form-config-definition-table-add-last-updated-time-stamp" author="apengu">
+        <addColumn tableName="form_config_definition">
+            <column name="last_updated_time_stamp" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+    <changeSet author="apengu" id="drop-form-config-complaintType-TransactionType-programArea">
+        <dropColumn  tableName="form_config_definition">
+            <column  name="complaint_type"/>
+        </dropColumn>
+        <dropColumn  tableName="form_config_definition">
+            <column  name="transaction_type"/>
+        </dropColumn>
+        <dropColumn  tableName="form_config_definition">
+            <column  name="program_area"/>
+        </dropColumn>
+    </changeSet>
+    <changeSet  author="apengu"  id="create-admin-console-dashboardView-3">
+        <createView  catalogName="admin_console_dashboard"
+                     encoding="UTF-8"
+                     fullDefinition="false"
+                     remarks="A String"
+                     replaceIfExists="false"
+                     viewName="admin_console_dashboard">
+            SELECT fc.id AS form_config_id, td.id AS transaction_definition_id, fc.name AS form_name,
+                   fc.description AS description, td.category AS category, fc.version AS version,
+                   fc.status AS status,fc.created_time_stamp AS created_time_stamp, fc.createdBy AS created_by,
+                   fc.lastUpdatedBy AS last_updated_by,
+                   fc.translationRequired AS translation_required,
+                   td.transaction_definition_key AS transaction_definition_key,
+                   fc.last_updated_time_stamp AS last_updated_time_stamp
+            from TRANSACTION_DEFINITION td
+                     join TRANSACTION_NAMED_FORM_MAPPING nf on td.id = nf.transaction_definition_id
+                     join FORM_CONFIG_DEFINITION fc on fc.id = nf.form_id
+        </createView>
+    </changeSet>
+    <changeSet id="add-subject-user-id-to-transaction" author="jhazelke">
+        <addColumn tableName="transaction">
+            <column name="subject_user_id" type="VARCHAR(36)" defaultValue="00000000-0000-0000-0000-000000000000">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+    <changeSet id="seed-subject-user-id" author="jhazelke">
+        <sql>
+            UPDATE transaction SET subject_user_id = created_by
+        </sql>
+    </changeSet>
+    <changeSet id="alter-transaction-table-add-assignTo" author="tthomas">
+        <addColumn tableName="transaction">
+            <column name="assigned_to" type="VARCHAR(64)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
     </changeSet>
 </databaseChangeLog>

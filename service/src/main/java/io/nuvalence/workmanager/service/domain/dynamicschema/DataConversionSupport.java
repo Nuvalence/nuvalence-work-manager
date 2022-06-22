@@ -1,5 +1,8 @@
 package io.nuvalence.workmanager.service.domain.dynamicschema;
 
+import io.nuvalence.workmanager.service.domain.dynamicschema.attributes.Document;
+import io.nuvalence.workmanager.service.domain.dynamicschema.attributes.DocumentRejectionReason;
+import io.nuvalence.workmanager.service.domain.dynamicschema.attributes.DocumentStatus;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +13,7 @@ import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Function;
 
 /**
@@ -33,7 +37,11 @@ public final class DataConversionSupport {
         register(String.class, LocalDate.class, DataConversionSupport::convertStringToLocalDate);
 
         register(String.class, LocalTime.class, DataConversionSupport::convertStringToLocalTime);
+
+        register(Map.class, Document.class, DataConversionSupport::convertMapToDocument);
     }
+
+
 
     /**
      * Converts the given value to the requested type, if a converter exists.
@@ -131,5 +139,44 @@ public final class DataConversionSupport {
                 log.warn("Could not convert value \"{}\" to boolean value. Returning null.", value);
                 return null;
         }
+    }
+
+    private static Document convertMapToDocument(Map<String, Object> documentMap) {
+        if (!documentMap.containsKey("documentId") || !documentMap.containsKey("fileName")) {
+            log.error("could not find fileName or documentId. fileName: {}, docutmentId: {}",
+                    documentMap.get("fileName"), documentMap.get("documentId"));
+            return null;
+        }
+
+        UUID documentId = UUID.fromString((String) documentMap.get("documentId"));
+        String fileName = String.valueOf(documentMap.get("fileName"));
+
+        // parse the initial string, and if it does not exist, default to pending.
+        String initialStatus = documentMap.containsKey("status")
+                ? (String) documentMap.get("status") : DocumentStatus.PENDING.toString();
+
+        String initialRejectionReason = (String) documentMap.get("rejectionReason");
+
+        // convert the string representation to the correct internal types
+        DocumentStatus status = DocumentStatus.fromText(initialStatus);
+        DocumentRejectionReason rejectionReason = initialRejectionReason != null
+                ? DocumentRejectionReason.fromText(initialRejectionReason) : null;
+
+        String fileType = null;
+        if (documentMap.containsKey("fileType")) {
+            fileType = String.valueOf(documentMap.get("fileType"));
+        }
+        String questionKey = null;
+        if (documentMap.containsKey("questionKey")) {
+            questionKey = String.valueOf(documentMap.get("questionKey"));
+        }
+        return Document.builder()
+                .documentId(documentId)
+                .status(status)
+                .rejectionReason(rejectionReason)
+                .fileName(fileName)
+                .fileType(fileType)
+                .questionKey(questionKey)
+                .build();
     }
 }

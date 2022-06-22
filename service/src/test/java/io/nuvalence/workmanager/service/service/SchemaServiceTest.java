@@ -86,6 +86,25 @@ class SchemaServiceTest {
     }
 
     @Test
+    void getSchemasByPartialNameMatchReturnsAllSchemas() throws JsonProcessingException {
+        // Arrange
+        final Schema schema1 = Schema.builder()
+                .name("testschema")
+                .property("attribute", String.class)
+                .build();
+        final Schema schema2 = Schema.builder()
+                .name("mytest")
+                .property("attribute", String.class)
+                .build();
+        final SchemaRow row1 = SchemaMapper.INSTANCE.schemaToSchemaRow(schema1);
+        final SchemaRow row2 = SchemaMapper.INSTANCE.schemaToSchemaRow(schema2);
+        Mockito.when(schemaRepository.searchByPartialName("")).thenReturn(List.of(row1, row2));
+
+        // Act and Assert
+        assertEquals(List.of(schema1, schema2), schemaService.getSchemasByPartialNameMatch(""));
+    }
+
+    @Test
     void getSchemasByPartialNameMatchThrowsRuntimeExceptionWhenJsonCannotBeParsed() throws JsonProcessingException {
         // Arrange
         final SchemaRow row = SchemaRow.builder()

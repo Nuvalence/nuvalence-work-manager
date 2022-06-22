@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.nuvalence.workmanager.service.domain.dynamicschema.Entity;
 import io.nuvalence.workmanager.service.domain.dynamicschema.Schema;
+import io.nuvalence.workmanager.service.domain.dynamicschema.attributes.Document;
 import io.nuvalence.workmanager.service.domain.dynamicschema.jpa.ConstraintJson;
 import io.nuvalence.workmanager.service.domain.dynamicschema.jpa.SchemaAttributeJson;
 import io.nuvalence.workmanager.service.domain.dynamicschema.jpa.SchemaJson;
@@ -47,7 +48,8 @@ public abstract class SchemaMapper {
             Integer.class,
             BigDecimal.class,
             LocalDate.class,
-            LocalTime.class
+            LocalTime.class,
+            Document.class
     ).collect(Collectors.toMap(Class::getSimpleName, Function.identity()));
 
     private final ObjectMapper objectMapper;

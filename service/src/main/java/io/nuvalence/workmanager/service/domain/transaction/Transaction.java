@@ -13,9 +13,12 @@ import org.hibernate.annotations.Type;
 import java.time.OffsetDateTime;
 import java.util.Objects;
 import java.util.UUID;
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 import javax.persistence.Transient;
 
@@ -27,6 +30,7 @@ import javax.persistence.Transient;
 @javax.persistence.Entity
 @Table(name = "transaction")
 @ToString(exclude = {"data"})
+@SuppressWarnings("checkstyle:ClassFanOutComplexity")
 public class Transaction {
     @Id
     @GeneratedValue(generator = "uuid2")
@@ -41,6 +45,10 @@ public class Transaction {
     @Column(name = "transaction_definition_key", length = 255, nullable = false)
     private String transactionDefinitionKey;
 
+    @ManyToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "transaction_definition_id", nullable = false, insertable = false, updatable = false)
+    private TransactionDefinition transactionDefinition;
+
     @Column(name = "process_instance_id", length = 64, nullable = false)
     private String processInstanceId;
 
@@ -54,15 +62,26 @@ public class Transaction {
     @Column(name = "created_by", length = 64, nullable = false)
     private String createdBy;
 
+    @Column(name = "subject_user_id", length = 64, nullable = false)
+    private String subjectUserId;
+
     @Setter
     @Column(name = "priority", length = 255)
     private String priority;
+
+    @Setter
+    @Column(name = "district", length = 255)
+    private String district;
 
     @Column(name = "created_timestamp", nullable = false)
     private OffsetDateTime createdTimestamp;
 
     @Column(name = "last_updated_timestamp", nullable = false)
     private OffsetDateTime lastUpdatedTimestamp;
+
+    @Setter
+    @Column(name = "assigned_to", length = 64)
+    private String assignedTo;
 
     @Transient
     private transient Entity data;
@@ -77,9 +96,12 @@ public class Transaction {
      * @param entityId Dynamic Entity ID
      * @param status Transaction status
      * @param createdBy User that created the transaction
+     * @param subjectUserId User that is the subject of the transaction
      * @param priority Transaction priority
+     * @param district Transaction district
      * @param createdTimestamp Timestamp of when transaction was created
      * @param lastUpdatedTimestamp Timestamp of when transaction was last updated
+     * @param assignedTo User responsible for the transaction
      */
     @Builder(toBuilder = true)
     public Transaction(UUID id,
@@ -89,9 +111,12 @@ public class Transaction {
                        UUID entityId,
                        String status,
                        String createdBy,
+                       String subjectUserId,
                        String priority,
+                       String district,
                        OffsetDateTime createdTimestamp,
-                       OffsetDateTime lastUpdatedTimestamp) {
+                       OffsetDateTime lastUpdatedTimestamp,
+                       String assignedTo) {
         this.id = id;
         this.transactionDefinitionId = transactionDefinitionId;
         this.transactionDefinitionKey = transactionDefinitionKey;
@@ -99,9 +124,12 @@ public class Transaction {
         this.entityId = entityId;
         this.status = status;
         this.createdBy = createdBy;
+        this.subjectUserId = subjectUserId;
         this.priority = priority;
+        this.district = district;
         this.createdTimestamp = createdTimestamp;
         this.lastUpdatedTimestamp = lastUpdatedTimestamp;
+        this.assignedTo = assignedTo;
     }
 
     /**
@@ -132,9 +160,13 @@ public class Transaction {
                 && Objects.equals(entityId, that.entityId)
                 && Objects.equals(status, that.status)
                 && Objects.equals(createdBy, that.createdBy)
+                && Objects.equals(subjectUserId, that.subjectUserId)
                 && Objects.equals(priority, that.priority)
+                && Objects.equals(district, that.district)
                 && Objects.equals(createdTimestamp, that.createdTimestamp)
-                && Objects.equals(lastUpdatedTimestamp, that.lastUpdatedTimestamp);
+                && Objects.equals(lastUpdatedTimestamp, that.lastUpdatedTimestamp)
+                && Objects.equals(assignedTo, that.assignedTo)
+                && Objects.equals(transactionDefinition, that.transactionDefinition);
     }
 
     @Override
@@ -146,9 +178,13 @@ public class Transaction {
                 entityId,
                 status,
                 createdBy,
+                subjectUserId,
                 priority,
+                district,
                 createdTimestamp,
-                lastUpdatedTimestamp
+                assignedTo,
+                lastUpdatedTimestamp,
+                transactionDefinition
         );
     }
 }

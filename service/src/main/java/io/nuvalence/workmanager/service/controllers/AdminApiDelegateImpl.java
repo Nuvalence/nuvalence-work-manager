@@ -1,17 +1,30 @@
 package io.nuvalence.workmanager.service.controllers;
 
 import io.nuvalence.workmanager.service.domain.formconfig.FormConfigDefinition;
+import io.nuvalence.workmanager.service.domain.transaction.AllowedLink;
 import io.nuvalence.workmanager.service.domain.transaction.TransactionDefinition;
+import io.nuvalence.workmanager.service.domain.transaction.TransactionLinkType;
 import io.nuvalence.workmanager.service.generated.controllers.AdminApiDelegate;
+import io.nuvalence.workmanager.service.generated.models.AdminConsoleDashboardModel;
+import io.nuvalence.workmanager.service.generated.models.AllowedLinkCreationRequest;
+import io.nuvalence.workmanager.service.generated.models.AllowedLinkModel;
 import io.nuvalence.workmanager.service.generated.models.FormConfigDefinitionModel;
+import io.nuvalence.workmanager.service.generated.models.FormConfigQueryParameters;
 import io.nuvalence.workmanager.service.generated.models.SchemaModel;
 import io.nuvalence.workmanager.service.generated.models.TransactionDefinitionModel;
+import io.nuvalence.workmanager.service.generated.models.TransactionLinkTypeModel;
+import io.nuvalence.workmanager.service.mapper.AdminConsoleDefinitionMapper;
+import io.nuvalence.workmanager.service.mapper.AllowedLinkMapper;
 import io.nuvalence.workmanager.service.mapper.FormConfigMapper;
 import io.nuvalence.workmanager.service.mapper.SchemaMapper;
 import io.nuvalence.workmanager.service.mapper.TransactionDefinitionMapper;
+import io.nuvalence.workmanager.service.mapper.TransactionLinkTypeMapper;
+import io.nuvalence.workmanager.service.service.AdminConsoleDefinitionService;
+import io.nuvalence.workmanager.service.service.AllowedLinkService;
 import io.nuvalence.workmanager.service.service.FormConfigService;
 import io.nuvalence.workmanager.service.service.SchemaService;
 import io.nuvalence.workmanager.service.service.TransactionDefinitionService;
+import io.nuvalence.workmanager.service.service.TransactionLinkTypeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -27,10 +40,14 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("checkstyle:ClassFanOutComplexity")
 public class AdminApiDelegateImpl implements AdminApiDelegate {
+    private final AllowedLinkService allowedLinkService;
     private final FormConfigService formConfigService;
     private final SchemaService schemaService;
     private final TransactionDefinitionService transactionDefinitionService;
+    private final TransactionLinkTypeService transactionLinkTypeService;
+    private final AdminConsoleDefinitionService adminConsoleDefinitionService;
 
     @Override
     public ResponseEntity<SchemaModel> getSchema(String name) {
@@ -81,6 +98,7 @@ public class AdminApiDelegateImpl implements AdminApiDelegate {
         return ResponseEntity.status(200).body(results);
     }
 
+    @Transactional
     @Override
     public ResponseEntity<List<TransactionDefinitionModel>> getTransactionDefinitionsByCategory(String category) {
         final List<TransactionDefinitionModel> results = transactionDefinitionService
@@ -136,6 +154,7 @@ public class AdminApiDelegateImpl implements AdminApiDelegate {
                 .map(FormConfigMapper.INSTANCE::formConfigToFormConfigModel)
                 .collect(Collectors.toList());
 
+
         return ResponseEntity.status(200).body(results);
     }
 
@@ -152,4 +171,84 @@ public class AdminApiDelegateImpl implements AdminApiDelegate {
                         FormConfigMapper.INSTANCE.formConfigToFormConfigModel(formConfigDefinition)
                 );
     }
+
+
+    @Override
+    public ResponseEntity<FormConfigDefinitionModel> putPublishFormConfig(FormConfigQueryParameters params) {
+        final UUID id = params.getId();
+        final Optional<FormConfigDefinition> formConfig = formConfigService.publishFormConfig(id);
+
+        return formConfig.isEmpty() ? ResponseEntity.status(404).build() : ResponseEntity.status(200).body(
+                FormConfigMapper.INSTANCE.formConfigToFormConfigModel(formConfig.get())
+        );
+    }
+
+    @Override
+    public ResponseEntity<FormConfigDefinitionModel> putUnpublishFormConfig(FormConfigQueryParameters params) {
+        final UUID id = params.getId();
+        final Optional<FormConfigDefinition> formConfig = formConfigService.unpublishFormConfig(id);
+
+        return formConfig.isEmpty() ? ResponseEntity.status(404).build() : ResponseEntity.status(200).body(
+                FormConfigMapper.INSTANCE.formConfigToFormConfigModel(formConfig.get())
+        );
+    }
+
+    @Override
+    public ResponseEntity<TransactionLinkTypeModel> postTransactionLinkType(
+            TransactionLinkTypeModel transactionLinkTypeModel) {
+        final TransactionLinkType transactionLinkType = transactionLinkTypeService.saveTransactionLinkType(
+                TransactionLinkTypeMapper.INSTANCE
+                        .transactionLinkTypeModelToTransactionLinkType(transactionLinkTypeModel)
+        );
+
+        return ResponseEntity
+                .status(201)
+                .body(
+                        TransactionLinkTypeMapper.INSTANCE
+                                .transactionLinkTypeToTransactionLinkTypeModel(transactionLinkType)
+                );
+    }
+
+    @Override
+    public ResponseEntity<List<TransactionLinkTypeModel>> getTransactionLinkTypes() {
+        final List<TransactionLinkTypeModel> results = transactionLinkTypeService.getTransactionLinkTypes().stream()
+                .map(TransactionLinkTypeMapper.INSTANCE::transactionLinkTypeToTransactionLinkTypeModel)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.status(200).body(results);
+    }
+
+    @Override
+    public ResponseEntity<AllowedLinkModel> postAllowedLinkToDefinition(AllowedLinkCreationRequest request) {
+        final AllowedLink allowedLink = allowedLinkService.saveAllowedLink(
+                AllowedLinkMapper.INSTANCE.allowedLinkRequestToAllowedLink(request),
+                request.getTransactionLinkTypeId()
+        );
+
+        return ResponseEntity
+                .status(201)
+                .body(
+                        AllowedLinkMapper.INSTANCE.allowedLinkToAllowedLinkModel(allowedLink)
+                );
+    }
+
+    @Override
+    public ResponseEntity<List<AllowedLinkModel>> getTransactionDefinitionAllowedLinksByKey(String key) {
+        final List<AllowedLinkModel> results = allowedLinkService.getAllowedLinksByDefinitionKey(key).stream()
+                .map(AllowedLinkMapper.INSTANCE::allowedLinkToAllowedLinkModel)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.status(200).body(results);
+    }
+
+    @Override
+    public ResponseEntity<List<AdminConsoleDashboardModel>> getAdminConsoleDashboard() {
+        final List<AdminConsoleDashboardModel> results = adminConsoleDefinitionService
+                .getAdminConsoleDashboardService().stream()
+                .map(AdminConsoleDefinitionMapper.INSTANCE::adminConsoleDefinitionToAdminConsoleDashboardModel)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.status(200).body(results);
+    }
+
 }

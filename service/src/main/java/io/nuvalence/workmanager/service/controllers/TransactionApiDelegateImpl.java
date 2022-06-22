@@ -1,28 +1,53 @@
 package io.nuvalence.workmanager.service.controllers;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import io.nuvalence.workmanager.service.auth.WorkerToken;
 import io.nuvalence.workmanager.service.domain.transaction.MissingEntityException;
 import io.nuvalence.workmanager.service.domain.transaction.MissingTaskException;
 import io.nuvalence.workmanager.service.domain.transaction.MissingTransactionDefinitionException;
 import io.nuvalence.workmanager.service.domain.transaction.Transaction;
 import io.nuvalence.workmanager.service.domain.transaction.TransactionDefinition;
+import io.nuvalence.workmanager.service.domain.transaction.TransactionLink;
+import io.nuvalence.workmanager.service.domain.transaction.TransactionLinkNotAllowedException;
 import io.nuvalence.workmanager.service.generated.controllers.TransactionApiDelegate;
+import io.nuvalence.workmanager.service.generated.models.LinkedTransaction;
+import io.nuvalence.workmanager.service.generated.models.PagedTransactionModel;
+import io.nuvalence.workmanager.service.generated.models.TransactionCountByStatusModel;
 import io.nuvalence.workmanager.service.generated.models.TransactionCreationRequest;
+import io.nuvalence.workmanager.service.generated.models.TransactionLinkCreationRequest;
+import io.nuvalence.workmanager.service.generated.models.TransactionLinkModel;
 import io.nuvalence.workmanager.service.generated.models.TransactionModel;
 import io.nuvalence.workmanager.service.generated.models.TransactionUpdateRequest;
 import io.nuvalence.workmanager.service.mapper.EntityMapper;
 import io.nuvalence.workmanager.service.mapper.MissingSchemaException;
+import io.nuvalence.workmanager.service.mapper.OffsetDateTimeMapper;
+import io.nuvalence.workmanager.service.mapper.TransactionLinkMapper;
 import io.nuvalence.workmanager.service.mapper.TransactionMapper;
+import io.nuvalence.workmanager.service.models.TransactionFilters;
 import io.nuvalence.workmanager.service.service.TransactionDefinitionService;
+import io.nuvalence.workmanager.service.service.TransactionLinkService;
 import io.nuvalence.workmanager.service.service.TransactionService;
+import io.nuvalence.workmanager.service.service.WorkflowTasksService;
+import io.nuvalence.workmanager.service.usermanagementapi.UserManagementClient;
+import io.nuvalence.workmanager.service.usermanagementapi.models.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import javax.ws.rs.ForbiddenException;
 
 /**
  * Controller layer for Transactions.
@@ -30,18 +55,23 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("checkstyle:ClassFanOutComplexity")
 public class TransactionApiDelegateImpl implements TransactionApiDelegate {
     private final TransactionService service;
     private final TransactionMapper mapper;
     private final TransactionDefinitionService transactionDefinitionService;
+    private final TransactionLinkService transactionLinkService;
+    private final WorkflowTasksService workflowTasksService;
     private final EntityMapper entityMapper;
+    private final UserManagementClient userManagementClient;
+    private Map<String, User> users = new HashMap<>();
 
     @Override
     public ResponseEntity<TransactionModel> getTransaction(UUID id)  {
         final Optional<TransactionModel> entity;
         try {
             entity = service.getTransactionById(id)
-                    .map(mapper::transactionToTransactionModel);
+                    .map(t -> createTransactionModel(t));
         } catch (MissingEntityException e) {
             log.error(
                     String.format("Transaction [%s] references missing entity.", id),
@@ -57,15 +87,26 @@ public class TransactionApiDelegateImpl implements TransactionApiDelegate {
     @Override
     public ResponseEntity<List<TransactionModel>> getTransactionsByUser() {
         try {
-            //TODO: Implement actual user information on filter instead of Dummy user
-            String userId = "Dummy user";
-            return ResponseEntity.ok(service.getTransactionsByUser(userId)
-                    .stream()
-                    .map(mapper::transactionToTransactionModel)
-                    .collect(Collectors.toList()));
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null) {
+                if (authentication instanceof WorkerToken) {
+                    String createdByEmail = ((WorkerToken) authentication).getUserEmail();
+                    Optional<User> user = userManagementClient.getUserByEmail(createdByEmail,
+                            ((WorkerToken) authentication).getOriginalToken());
+
+                    return ResponseEntity.ok(service.getTransactionsByUser(user.get().getId().toString())
+                            .stream()
+                            .map(t -> createTransactionModel(t))
+                            .collect(Collectors.toList()));
+                }
+            }
+            throw new ForbiddenException();
         } catch (MissingEntityException e) {
             log.error("One or more transactions reference missing entities.", e);
             return ResponseEntity.status(500).build();
+        } catch (ForbiddenException e) {
+            log.error("Security context authentication not set.");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
     }
 
@@ -75,13 +116,84 @@ public class TransactionApiDelegateImpl implements TransactionApiDelegate {
             return ResponseEntity.ok(
                     service.getTransactionsForDefinition(transactionDefinitionKey)
                             .stream()
-                            .map(mapper::transactionToTransactionModel)
+                            .map(t -> createTransactionModel(t))
                             .collect(Collectors.toList())
             );
         } catch (MissingEntityException e) {
             log.error("One or more transactions reference missing entities.", e);
             return ResponseEntity.status(500).build();
         }
+    }
+
+    @Override
+    public ResponseEntity<PagedTransactionModel> getFilteredTransactions(String transactionDefinitionKey,
+                                                                         String category,
+                                                                         String startDate,
+                                                                         String endDate,
+                                                                         List<String> priority,
+                                                                         List<String> status,
+                                                                         List<String> assignedTo,
+                                                                         Boolean assignedToMe,
+                                                                         String sortCol,
+                                                                         String sortDir,
+                                                                         Integer pageNumber,
+                                                                         Integer pageSize) {
+        try {
+            assignedTo = getAssignedToList(assignedTo, assignedToMe);
+
+            TransactionFilters filters = TransactionFilters.builder()
+                    .transactionDefinitionKey(transactionDefinitionKey)
+                    .category(category)
+                    .startDate(OffsetDateTimeMapper.INSTANCE.toOffsetDateTimeStartOfDay(startDate))
+                    .endDate(OffsetDateTimeMapper.INSTANCE.toOffsetDateTimeEndOfDay(endDate))
+                    .priority(priority)
+                    .status(status)
+                    .assignedTo(assignedTo)
+                    .sortCol(sortCol)
+                    .sortDir(sortDir)
+                    .pageNumber(pageNumber)
+                    .pageSize(pageSize)
+                    .build();
+
+            Page<TransactionModel> results = service.getFilteredTransactions(filters)
+                    .map(mapper::transactionToTransactionModel);
+
+            PagedTransactionModel model = new PagedTransactionModel();
+            model.totalPages(results.getTotalPages());
+            model.totalCount(BigDecimal.valueOf(results.getTotalElements()));
+            model.items(results.toList());
+
+            return ResponseEntity.ok(model);
+        } catch (MissingEntityException e) {
+            log.error("One or more transactions reference missing entities.", e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @Override
+    public ResponseEntity<List<TransactionCountByStatusModel>> getTransactionCountByStatus(
+            String transactionDefinitionKey,
+            String category,
+            String startDate,
+            String endDate,
+            List<String> priority,
+            List<String> status,
+            List<String> assignedTo,
+            Boolean assignedToMe) {
+        assignedTo = getAssignedToList(assignedTo, assignedToMe);
+
+        TransactionFilters filters = TransactionFilters.builder()
+                .transactionDefinitionKey(transactionDefinitionKey)
+                .category(category)
+                .startDate(OffsetDateTimeMapper.INSTANCE.toOffsetDateTimeStartOfDay(startDate))
+                .endDate(OffsetDateTimeMapper.INSTANCE.toOffsetDateTimeEndOfDay(endDate))
+                .priority(priority)
+                .status(status)
+                .assignedTo(assignedTo)
+                .build();
+
+        List<TransactionCountByStatusModel> counts = service.getTransactionCountsByStatus(filters);
+        return ResponseEntity.ok(counts);
     }
 
     @Override
@@ -90,7 +202,7 @@ public class TransactionApiDelegateImpl implements TransactionApiDelegate {
             return ResponseEntity.ok(
                     service.getTransactionsByCategory(category)
                             .stream()
-                            .map(mapper::transactionToTransactionModel)
+                            .map(t -> createTransactionModel(t))
                             .collect(Collectors.toList())
             );
         } catch (MissingEntityException e) {
@@ -100,15 +212,16 @@ public class TransactionApiDelegateImpl implements TransactionApiDelegate {
     }
 
     @Override
-    public ResponseEntity<TransactionModel> postTransaction(TransactionCreationRequest request) {
+    public ResponseEntity<TransactionModel> postTransaction(TransactionCreationRequest request,
+        String authorization) {
         try {
             final TransactionDefinition definition = transactionDefinitionService
                     .getTransactionDefinitionByKey(request.getTransactionDefinitionKey())
                     .orElseThrow(
                             () -> new MissingTransactionDefinitionException(request.getTransactionDefinitionKey())
                     );
-            final Transaction transaction = service.createTransaction(definition);
-            return ResponseEntity.ok(mapper.transactionToTransactionModel(transaction));
+            final Transaction transaction = service.createTransaction(definition, authorization);
+            return ResponseEntity.ok(createTransactionModel(transaction));
         } catch (MissingSchemaException e) {
             log.error(
                     String.format(
@@ -134,6 +247,7 @@ public class TransactionApiDelegateImpl implements TransactionApiDelegate {
     }
 
     @Override
+    @SuppressWarnings("checkstyle:CyclomaticComplexity")
     public ResponseEntity<TransactionModel> updateTransaction(UUID id,
                                                               TransactionUpdateRequest request,
                                                               String taskId) {
@@ -151,9 +265,10 @@ public class TransactionApiDelegateImpl implements TransactionApiDelegate {
                 transaction.setPriority(request.getPriority());
             }
 
-            if (request.getStatus().toLowerCase().matches("new|edits|info|"
-                    + "supervisor|super_approved|inspection|inspection_scheduled|approved|rejected|review")) {
-                transaction.setStatus(request.getStatus());
+            if (StringUtils.isNotEmpty(request.getAssignedTo())) {
+                transaction.setAssignedTo(request.getAssignedTo());
+            } else if ("".equals(request.getAssignedTo())) {
+                transaction.setAssignedTo("");
             }
 
             entityMapper.applyMappedPropertiesToEntity(transaction.getData(), request.getData());
@@ -168,7 +283,8 @@ public class TransactionApiDelegateImpl implements TransactionApiDelegate {
 
         if (taskId != null) {
             try {
-                service.completeTask(transaction, taskId);
+                String condition = request.getCondition() != null ? request.getCondition() : "";
+                service.completeTask(transaction, taskId, condition);
             } catch (MissingTaskException e) {
                 log.error(
                         String.format(
@@ -179,9 +295,109 @@ public class TransactionApiDelegateImpl implements TransactionApiDelegate {
                         e
                 );
                 return ResponseEntity.status(424).build();
+            } catch (JsonProcessingException e) {
+                log.error(
+                        String.format(
+                                "Unable to save data for task with key [%s] in transaction with ID %s",
+                                taskId,
+                                transaction.getId()
+                        ),
+                        e
+                );
+                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY.value()).build();
             }
         }
 
-        return ResponseEntity.ok(mapper.transactionToTransactionModel(updated));
+        return ResponseEntity.ok(createTransactionModel(updated));
+    }
+
+    @Override
+    public ResponseEntity<TransactionLinkModel> linkTransactions(TransactionLinkCreationRequest request) {
+        try {
+            final TransactionLink transactionLink = transactionLinkService.saveTransactionLink(
+                    TransactionLinkMapper.INSTANCE.transactionLinkRequestToTransactionLink(request),
+                    request.getTransactionLinkTypeId()
+            );
+
+            return ResponseEntity
+                    .status(201)
+                    .body(
+                        TransactionLinkMapper.INSTANCE.transactionLinkToTransactionLinkModel(transactionLink)
+                    );
+        } catch (MissingEntityException e) {
+            log.error("transaction references missing entity.");
+            return ResponseEntity.status(424).build();
+        } catch (MissingTransactionDefinitionException e) {
+            log.error("transaction contains an entity with missing schema(s).");
+            return ResponseEntity.status(424).build();
+        } catch (TransactionLinkNotAllowedException e) {
+            log.error("transactions not allowed to be linked.");
+            return ResponseEntity.status(400).build();
+        }
+    }
+
+    @Override
+    public ResponseEntity<List<LinkedTransaction>> getLinkedTransactionsById(UUID id) {
+        final List<LinkedTransaction> results = transactionLinkService.getLinkedTransactionsById(id);
+        return ResponseEntity.status(200).body(results);
+    }
+
+    @Override
+    public ResponseEntity<List<String>> getAvailableStatuses(String type, String category, String key) {
+        final List<String> results = workflowTasksService.getCamundaStatuses(type, category, key);
+        return ResponseEntity.status(200).body(results);
+    }
+
+    private TransactionModel createTransactionModel(Transaction t) {
+        TransactionModel transactionModel = mapper.transactionToTransactionModel(t);
+        Optional<User> user = getUserByIdFromCache(t.getCreatedBy());
+        transactionModel.setCreatedByDisplayName(user.get().getDisplayName());
+        // TODO: Once we create a way to submit a transaction on behalf of a different user, we will need to get this
+        //  user by subjectUserId, but subjectUserId and createdBy should always be equal for now. This will also
+        //  need to be updated in TransactionFactory.java
+        Optional<User> subjectUser = user;
+        transactionModel.setSubjectUserDisplayName(subjectUser.get().getDisplayName());
+        return transactionModel;
+    }
+
+    private Optional<User> getUserByIdFromCache(String id) {
+        if (users.containsKey(id)) {
+            return Optional.ofNullable(users.get(id));
+        }
+
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null) {
+                if (authentication instanceof WorkerToken) {
+                    Optional<User> user = userManagementClient.getUserById(id,
+                            ((WorkerToken) authentication).getOriginalToken());
+                    users.put(id, user.get());
+                    return user;
+                }
+            }
+        } catch (ForbiddenException e) {
+            log.error("Security context authentication not set.");
+        }
+        return Optional.ofNullable(users.get(id));
+    }
+
+    private List<String> getAssignedToList(List<String> assignedTo, Boolean assignedToMe) {
+        if (assignedToMe != null && assignedToMe) {
+            try {
+                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+                if (authentication != null) {
+                    Optional<User> user = userManagementClient.getUserByEmail(
+                            ((WorkerToken) authentication).getUserEmail(),
+                            ((WorkerToken) authentication).getOriginalToken());
+                    if (user.isPresent()) {
+                        assignedTo = List.of(user.get().getId().toString());
+                    }
+                }
+                throw new ForbiddenException();
+            } catch (ForbiddenException e) {
+                log.error("Security context authentication not set.");
+            }
+        }
+        return assignedTo;
     }
 }

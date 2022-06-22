@@ -1,20 +1,28 @@
 package io.nuvalence.workmanager.service.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import io.nuvalence.workmanager.service.domain.dynamicschema.Entity;
 import io.nuvalence.workmanager.service.domain.dynamicschema.Schema;
 import io.nuvalence.workmanager.service.domain.transaction.MissingEntityException;
 import io.nuvalence.workmanager.service.domain.transaction.MissingTaskException;
 import io.nuvalence.workmanager.service.domain.transaction.Transaction;
 import io.nuvalence.workmanager.service.domain.transaction.TransactionDefinition;
+import io.nuvalence.workmanager.service.generated.models.TransactionCountByStatusModel;
 import io.nuvalence.workmanager.service.mapper.MissingSchemaException;
+import io.nuvalence.workmanager.service.models.TransactionFilters;
 import io.nuvalence.workmanager.service.repository.TransactionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -35,11 +43,15 @@ class TransactionServiceTest {
     @Mock
     private EntityService entityService;
 
+    @Mock
+    private WorkflowTasksService workflowTasksService;
+
     private TransactionService service;
 
     @BeforeEach
     void setup() {
-        service = new TransactionService(repository, factory, transactionTaskService, entityService);
+        service = new TransactionService(repository, factory, transactionTaskService, entityService,
+                workflowTasksService);
     }
 
     @Test
@@ -53,6 +65,23 @@ class TransactionServiceTest {
 
         // Act
         service.createTransaction(definition);
+
+        // Assert
+        Mockito.verify(repository).save(transaction);
+    }
+
+    @Test
+    void createTransactionWithToken() throws MissingSchemaException, MissingEntityException {
+        // Arrange
+        final TransactionDefinition definition = TransactionDefinition.builder().build();
+        final Transaction transaction = Transaction.builder().build();
+        final String token = "token";
+        Mockito
+                .when(factory.createTransaction(definition))
+                .thenReturn(transaction);
+
+        // Act
+        service.createTransaction(definition, token);
 
         // Assert
         Mockito.verify(repository).save(transaction);
@@ -117,7 +146,7 @@ class TransactionServiceTest {
     }
 
     @Test
-    void completeTask() throws MissingTaskException {
+    void completeTask() throws MissingTaskException, JsonProcessingException {
         // Arrange
         final Transaction transaction = Transaction.builder()
                 .id(UUID.randomUUID())
@@ -125,10 +154,10 @@ class TransactionServiceTest {
                 .build();
 
         // Act
-        service.completeTask(transaction, "taskId");
+        service.completeTask(transaction, "taskId", "foo");
 
         // Assert
-        Mockito.verify(transactionTaskService).completeTask(transaction, "taskId");
+        Mockito.verify(transactionTaskService).completeTask(transaction, "taskId", "foo");
     }
 
     @Test
@@ -188,27 +217,78 @@ class TransactionServiceTest {
     }
 
     @Test
-    void updateTransactionPriority() throws Exception {
+    void getFilteredTransactions() throws MissingEntityException {
         // Arrange
-        final Transaction transaction = Transaction.builder()
+        final Transaction transaction1 = Transaction.builder()
                 .id(UUID.randomUUID())
-                .priority("low")
+                .entityId(UUID.randomUUID())
+                .createdBy("user")
                 .build();
-        final Entity entity = new Entity(Schema.builder().build(), transaction.getEntityId());
-        Mockito
-                .when(repository.findById(transaction.getId()))
-                .thenReturn(Optional.of(transaction));
-        Mockito
-                .when(entityService.getEntityById(entity.getId()))
-                .thenReturn(Optional.of(entity));
-        transaction.loadEntity(entityService);
+        final Entity entity1 = new Entity(Schema.builder().build(), transaction1.getEntityId());
+        final Transaction transaction2 = Transaction.builder()
+                .id(UUID.randomUUID())
+                .entityId(UUID.randomUUID())
+                .createdBy("user")
+                .build();
+        final Entity entity2 = new Entity(Schema.builder().build(), transaction2.getEntityId());
+        final TransactionFilters filters = TransactionFilters.builder()
+                .transactionDefinitionKey("dummy")
+                .category("test")
+                .startDate(OffsetDateTime.now())
+                .endDate(OffsetDateTime.now())
+                .priority(List.of("medium"))
+                .status(List.of("new"))
+                .assignedTo(List.of(UUID.randomUUID().toString()))
+                .sortCol("id")
+                .sortDir("asc")
+                .pageNumber(0)
+                .pageSize(25)
+                .build();
 
-        // Act
-        transaction.setPriority("urgent");
+        final Page<Transaction> pagedResults = new PageImpl<>(List.of(transaction1, transaction2));
 
-        // Assert
-        assertEquals(service.updateTransaction(transaction).getPriority(), "urgent");
-        assertEquals(transaction, service.updateTransaction(transaction));
+        Mockito
+                .when(repository.findAll(ArgumentMatchers.any(),
+                        ArgumentMatchers.<Pageable>any()))
+                .thenReturn(pagedResults);
+        Mockito
+                .when(entityService.getEntityById(entity1.getId()))
+                .thenReturn(Optional.of(entity1));
+        Mockito
+                .when(entityService.getEntityById(entity2.getId()))
+                .thenReturn(Optional.of(entity2));
+
+        // Act and Assert
+        assertEquals(pagedResults, service.getFilteredTransactions(filters));
     }
 
+    @Test
+    void getTransactionCountsByStatus() {
+        // Arrange
+        final TransactionFilters filters = TransactionFilters.builder()
+                .transactionDefinitionKey("dummy")
+                .category("test")
+                .startDate(OffsetDateTime.now())
+                .endDate(OffsetDateTime.now())
+                .priority(List.of("medium"))
+                .status(List.of("new"))
+                .assignedTo(List.of(UUID.randomUUID().toString()))
+                .build();
+
+        final TransactionCountByStatusModel count = new TransactionCountByStatusModel();
+        count.setStatus("new");
+        count.setCount(123);
+
+        Mockito
+                .when(repository.getTransactionCountsByStatus(ArgumentMatchers.any()))
+                .thenReturn(List.of(count));
+
+        // Act
+        List<TransactionCountByStatusModel> counts = service.getTransactionCountsByStatus(filters);
+
+        // Assert
+        assertEquals(counts.size(), 1);
+        assertEquals(counts.get(0).getCount(), count.getCount());
+        assertEquals(counts.get(0).getStatus(), count.getStatus());
+    }
 }

@@ -27,3 +27,6 @@ camunda:
     metrics:
       enabled: false
       db-reporter-activate: false
+
+userManagement:
+  baseUrl: "https://dummy-url.app"

@@ -5,8 +5,10 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.nuvalence.workmanager.service.domain.dynamicschema.DataConversionSupport;
 import io.nuvalence.workmanager.service.domain.dynamicschema.Entity;
 import io.nuvalence.workmanager.service.domain.dynamicschema.Schema;
+import io.nuvalence.workmanager.service.domain.dynamicschema.attributes.Document;
 import io.nuvalence.workmanager.service.domain.dynamicschema.jpa.EntityRow;
 import io.nuvalence.workmanager.service.generated.models.EntityModel;
 import io.nuvalence.workmanager.service.service.SchemaService;
@@ -16,11 +18,17 @@ import org.apache.commons.beanutils.DynaProperty;
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -38,6 +46,7 @@ public abstract class EntityMapper {
     public static final EntityMapper INSTANCE = Mappers.getMapper(EntityMapper.class);
 
     private final ObjectMapper objectMapper;
+    private final Set<String> attributesToMesh = Set.of("documentList"); // O(1) contains call
 
     @Autowired
     @Setter
@@ -164,14 +173,22 @@ public abstract class EntityMapper {
                         value.toString()
                 );
                 if (List.class.isAssignableFrom(dynaProperty.getType())) {
-                    @SuppressWarnings("unchecked")
-                    final List<?> list = convertListValueToEntity(schema, attributeName, (List<Object>) value);
-                    entity.set(attributeName, list);
+                    // if list attribute should be meshed, run mesh.
+                    if (attributesToMesh.contains(attributeName)) {
+                        @SuppressWarnings("unchecked")
+                        final List<?> meshedList = entityListMapMesh((List<Object>) entity.get(attributeName),
+                                schema, attributeName, (List<Object>) value);
+                        entity.set(attributeName, meshedList);
+                    } else {
+                        @SuppressWarnings("unchecked")
+                        final List<?> list = convertListValueToEntity(schema, attributeName,
+                                (List<Object>) value);
+                        entity.set(attributeName, list);
+                    }
                 } else {
-                    entity.set(
-                            attributeName,
-                            convertSingleValueToEntity(schema, dynaProperty.getType(), attributeName, value)
-                    );
+                    entity.set(attributeName, convertSingleValueToEntity(
+                            schema, dynaProperty.getType(), attributeName, value
+                    ));
                 }
             }
         }
@@ -201,12 +218,13 @@ public abstract class EntityMapper {
             return entityModelToEntity(subModel);
         }
 
-        return value;
+        return DataConversionSupport.convert(value, type);
     }
 
     private List<?> convertListValueToEntity(final Schema schema,
                                              final String key,
                                              final List<Object> list) throws MissingSchemaException {
+
         final List<Object> result = new LinkedList<>();
         for (Object value : list) {
             result.add(convertSingleValueToEntity(
@@ -218,5 +236,55 @@ public abstract class EntityMapper {
         }
 
         return result;
+    }
+
+    private List<?> entityListMapMesh(final List<Object> persistedList,
+                                           final Schema schema,
+                                           final String attributeName,
+                                           final List<Object> inputList) throws MissingSchemaException {
+
+        // Document specific logic
+        if (schema.getDynaProperty(attributeName).getContentType().equals(Document.class)) {
+            if (!inputList.isEmpty()) {
+                final List<Object> result = new LinkedList<>();
+
+                // generate a map of persisted documents with an id key to compare ids, access old value.
+                Map<UUID, Document> documentMap = persistedList.stream().filter(Document.class::isInstance)
+                        .map(Document.class::cast)
+                        .collect(Collectors.toMap(Document::getDocumentId, Function.identity()));
+
+                // loop input objects, this will ignore removed documents and remove them.
+                for (Object rawDoc: inputList) {
+                    Document doc = (Document) DataConversionSupport.convert(rawDoc,
+                            schema.getDynaProperty(attributeName).getContentType());
+                    // run mesh on already existing documents
+                    if (documentMap.containsKey(doc.getDocumentId())) {
+                        if (isAuthorizedForDocuments()) {
+                            result.add(
+                                    convertSingleValueToEntity(schema,
+                                            schema.getDynaProperty(attributeName).getContentType(),
+                                            attributeName, rawDoc));
+                        } else {
+                            result.add(documentMap.get(doc.getDocumentId()));
+                        }
+                    } else {
+                        result.add(
+                                convertSingleValueToEntity(schema,
+                                        schema.getDynaProperty(attributeName).getContentType(),
+                                        attributeName, rawDoc));
+                    }
+                }
+                return result;
+            }
+        }
+        return convertListValueToEntity(schema, attributeName, inputList);
+    }
+
+    // This currently works for every user
+    private boolean isAuthorizedForDocuments() {
+        // TODO: Add control checks once custom tenant claims are passed in. (requires ADFS / okta claims.)
+        Authentication user = SecurityContextHolder.getContext().getAuthentication();
+        SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_USER"); // replace this
+        return user.getAuthorities().contains(authority);
     }
 }

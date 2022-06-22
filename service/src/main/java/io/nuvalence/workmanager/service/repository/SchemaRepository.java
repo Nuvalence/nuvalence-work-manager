@@ -14,4 +14,7 @@ public interface SchemaRepository extends CrudRepository<SchemaRow, String> {
 
     @Query("SELECT s FROM SchemaRow s WHERE s.name LIKE %:query%")
     List<SchemaRow> searchByPartialName(@Param("query") String query);
+
+    @Query("SELECT s FROM SchemaRow s")
+    List<SchemaRow> getAllSchemas();
 }

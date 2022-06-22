@@ -14,6 +14,12 @@ spring:
     url: ${DB_CONNECTION_URL}
     user: ${DB_USERNAME}
     password: ${DB_PASSWORD}
+  cloud:
+    gcp:
+      sql:
+        enabled: false
+      firestore:
+        enabled: false
 management:
   endpoints:
     web:
@@ -26,3 +32,8 @@ camunda:
       id: admin
       password: admin
       firstName: Admin
+
+firebase:
+  credential:
+    resource-path: ${_FIREBASE_CONFIG}
+    api-key: ${_FIREBASE_API_KEY}
