@@ -5,7 +5,7 @@ import lombok.EqualsAndHashCode;
 import java.util.Collection;
 
 /**
- * A single validadtion constraint that can be applied to an entity property.
+ * A single validation constraint that can be applied to an entity property.
  *
  * @param <T> Property type this constraint applies to
  */

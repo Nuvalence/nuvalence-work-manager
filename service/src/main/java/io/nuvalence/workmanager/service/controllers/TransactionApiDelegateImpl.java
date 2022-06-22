@@ -365,24 +365,39 @@ public class TransactionApiDelegateImpl implements TransactionApiDelegate {
             return Optional.ofNullable(users.get(id));
         }
 
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Optional<User> user = userManagementClient.getUserById(id,
-                ((WorkerToken) authentication).getOriginalToken());
-        users.put(id, user.get());
-        return user;
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null) {
+                if (authentication instanceof WorkerToken) {
+                    Optional<User> user = userManagementClient.getUserById(id,
+                            ((WorkerToken) authentication).getOriginalToken());
+                    users.put(id, user.get());
+                    return user;
+                }
+            }
+        } catch (ForbiddenException e) {
+            log.error("Security context authentication not set.");
+        }
+        return Optional.ofNullable(users.get(id));
     }
 
     private List<String> getAssignedToList(List<String> assignedTo, Boolean assignedToMe) {
         if (assignedToMe != null && assignedToMe) {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            Optional<User> user = userManagementClient.getUserByEmail(
-                    ((WorkerToken) authentication).getUserEmail(),
-                    ((WorkerToken) authentication).getOriginalToken());
-            if (user.isPresent()) {
-                assignedTo = List.of(user.get().getId().toString());
+            try {
+                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+                if (authentication != null) {
+                    Optional<User> user = userManagementClient.getUserByEmail(
+                            ((WorkerToken) authentication).getUserEmail(),
+                            ((WorkerToken) authentication).getOriginalToken());
+                    if (user.isPresent()) {
+                        assignedTo = List.of(user.get().getId().toString());
+                    }
+                }
+                throw new ForbiddenException();
+            } catch (ForbiddenException e) {
+                log.error("Security context authentication not set.");
             }
         }
-
         return assignedTo;
     }
 }

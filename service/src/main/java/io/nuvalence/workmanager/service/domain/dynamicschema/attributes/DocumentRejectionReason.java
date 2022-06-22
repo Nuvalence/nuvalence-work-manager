@@ -22,7 +22,7 @@ public enum DocumentRejectionReason {
 
     /**
      * Validation for Document rejection reason enum.
-     * @param text Incommoding text from json.
+     * @param text Incoming text from json.
      * @return A valid Document Rejection Reason.
      */
     public static DocumentRejectionReason fromText(String text) {
